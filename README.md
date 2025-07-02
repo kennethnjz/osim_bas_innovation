@@ -1,5 +1,4 @@
 # Timetable-Management-System
-This project is a Independent Project submission for 3rd Semester Exams:
 Key Components:
 
 Tkinter:
