@@ -4,6 +4,8 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
 from tkinter import filedialog
+import mimetypes
+from pathlib import Path
 
 import numpy as np
 from sqlalchemy.types import *
@@ -72,6 +74,9 @@ def browse_files():
 
     filepath.config(text="File Opened: " + filename)
 
+    file_type = Path(filename).suffix
+    print("File Type: " + file_type)
+
     if not filename:
         return
 
@@ -133,8 +138,11 @@ def browse_files():
             "minutes_dependent_job_id": str
         }
 
-        df = pd.read_excel(filename,sheet_name="Template",names=col_names,dtype=df_schema)
-        # print(df)
+        if file_type == ".xlsx":
+            df = pd.read_excel(filename,sheet_name="Template",names=col_names,dtype=df_schema)
+        elif file_type == ".csv":
+            df = pd.read_csv(filename,names=col_names,dtype=df_schema, encoding='cp1252',skiprows=1)
+        print(df)
 
         # Connect to SQLite database
         conn = sqlite3.connect(r'files/timetable.db')

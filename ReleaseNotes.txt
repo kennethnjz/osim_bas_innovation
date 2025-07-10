@@ -3,6 +3,15 @@ Release Notes
 Date:   11/07/2025
 Name:   Kenneth Ng
 Release:
+1. Added support for csv files when importing template
+
+Changes:
+files\timetable.db
+main.py
+=============
+Date:   11/07/2025
+Name:   Kenneth Ng
+Release:
 1. Removed unnecessary UI elements from original source
 2. Added Import Template button and feature to load Excel file into DB
 
