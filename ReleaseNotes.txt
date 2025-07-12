@@ -1,5 +1,17 @@
 Release Notes
 =============
+Date:   12/07/2025
+Name:   Jeremy
+Release:
+1. Added Export Schedule button and export functionality to Excel/CSV
+2. Added unit tests for import and export features
+3. Created tests directory
+
+Changes:
+main.py
+tests/test_browse_files.py
+tests/test_export_schedule.py
+=============
 Date:   11/07/2025
 Name:   Kenneth Ng
 Release:

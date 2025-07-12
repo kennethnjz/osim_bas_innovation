@@ -252,12 +252,42 @@ filepath = tk.Label(
 )
 filepath.pack(pady=10)
 
+# Export function
+def export_schedule():
+    try:
+        conn = sqlite3.connect(r'files/timetable.db')
+        df = pd.read_sql_query('SELECT * FROM OPERATING_SCHEDULE', conn)
+        conn.close()
+        if df.empty:
+            messagebox.showwarning('No Data', 'No data found in OPERATING_SCHEDULE!')
+            return
+        filetypes = [('Excel Files', '*.xlsx'), ('CSV Files', '*.csv')]
+        export_file = filedialog.asksaveasfilename(defaultextension='.xlsx', filetypes=filetypes, title='Export As')
+        if not export_file:
+            return
+        if export_file.endswith('.csv'):
+            df.to_csv(export_file, index=False)
+        else:
+            df.to_excel(export_file, index=False)
+        messagebox.showinfo('Export Successful', f'Data exported to {export_file}')
+    except Exception as e:
+        messagebox.showerror('Export Failed', f'An error occurred: {e}')
+
 tk.Button(
     m,
     text='Import Template',
     font=('Consolas', 12, 'bold'),
     padx=30,
     command=browse_files
+).pack(pady=10)
+
+# Export button
+tk.Button(
+    m,
+    text='Export Schedule',
+    font=('Consolas', 12, 'bold'),
+    padx=30,
+    command=export_schedule
 ).pack(pady=10)
 
 m.mainloop()
