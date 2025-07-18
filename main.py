@@ -10,6 +10,11 @@ from pathlib import Path
 import numpy as np
 from sqlalchemy.types import *
 import os, sys
+
+import timetable_daily
+import timetable_dependency
+import timetable_weekly
+
 sys.path.insert(0, 'windows/')
 import timetable_stud
 import timetable_fac
@@ -64,7 +69,7 @@ import pandas as pd
 #         else:
 #             messagebox.showerror('Bad Input', 'Incorret Username/Password!')
 
-def browse_files():
+def import_function():
     filename = filedialog.askopenfilename(initialdir = "/",
                                           title = "Select the Import Template",
                                           filetypes = (("Excel Files",
@@ -155,15 +160,47 @@ def browse_files():
         conn.close()
         print("Data successfully loaded from Excel to SQLite!")
 
+        messagebox.showinfo('Schedule Import Successful', 'Schedule has been successfully imported')
+
     except Exception as e:
+        messagebox.showerror('Import Failed', f'An error occurred: {e}')
         print(f"An error occurred: {e}")
 
-    #test
+def generate_timetable():
+    try:
+        timetable_daily.generate_daily_timetable()
+        timetable_weekly.generate_weekly_timetable()
+        timetable_dependency.generate_dependency_timetable()
+
+        messagebox.showinfo('Timetable Generation Successful', 'Timetable has been generated')
+    except Exception as e:
+        messagebox.showerror('Timetable Generation Failed', f'An error occurred: {e}')
+
+# Export function
+def export_schedule():
+    try:
+        conn = sqlite3.connect(r'files/timetable.db')
+        df = pd.read_sql_query('SELECT * FROM OPERATING_SCHEDULE', conn)
+        conn.close()
+        if df.empty:
+            messagebox.showwarning('No Data', 'No data found in OPERATING_SCHEDULE!')
+            return
+        filetypes = [('Excel Files', '*.xlsx'), ('CSV Files', '*.csv')]
+        export_file = filedialog.asksaveasfilename(defaultextension='.xlsx', filetypes=filetypes, title='Export As')
+        if not export_file:
+            return
+        if export_file.endswith('.csv'):
+            df.to_csv(export_file, index=False)
+        else:
+            df.to_excel(export_file, index=False)
+        messagebox.showinfo('Export Successful', f'Data exported to {export_file}')
+    except Exception as e:
+        messagebox.showerror('Export Failed', f'An error occurred: {e}')
 
 m = tk.Tk()
 
 m.geometry('450x500')
-m.title('Welcome')  
+m.title('Welcome')
 
 tk.Label(
     m,
@@ -252,33 +289,13 @@ filepath = tk.Label(
 )
 filepath.pack(pady=10)
 
-# Export function
-def export_schedule():
-    try:
-        conn = sqlite3.connect(r'files/timetable.db')
-        df = pd.read_sql_query('SELECT * FROM OPERATING_SCHEDULE', conn)
-        conn.close()
-        if df.empty:
-            messagebox.showwarning('No Data', 'No data found in OPERATING_SCHEDULE!')
-            return
-        filetypes = [('Excel Files', '*.xlsx'), ('CSV Files', '*.csv')]
-        export_file = filedialog.asksaveasfilename(defaultextension='.xlsx', filetypes=filetypes, title='Export As')
-        if not export_file:
-            return
-        if export_file.endswith('.csv'):
-            df.to_csv(export_file, index=False)
-        else:
-            df.to_excel(export_file, index=False)
-        messagebox.showinfo('Export Successful', f'Data exported to {export_file}')
-    except Exception as e:
-        messagebox.showerror('Export Failed', f'An error occurred: {e}')
-
+# Import button
 tk.Button(
     m,
     text='Import Template',
     font=('Consolas', 12, 'bold'),
     padx=30,
-    command=browse_files
+    command=import_function
 ).pack(pady=10)
 
 # Export button
@@ -288,6 +305,15 @@ tk.Button(
     font=('Consolas', 12, 'bold'),
     padx=30,
     command=export_schedule
+).pack(pady=10)
+
+# Generate Timetable button
+tk.Button(
+    m,
+    text='Generate Timetable',
+    font=('Consolas', 12, 'bold'),
+    padx=30,
+    command=generate_timetable
 ).pack(pady=10)
 
 m.mainloop()
