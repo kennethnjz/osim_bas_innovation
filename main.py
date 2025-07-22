@@ -21,6 +21,8 @@ import timetable_fac
 import sqlite3
 import pandas as pd
 
+import schedule_template_validation
+
 # def challenge():
 #     conn = sqlite3.connect(r'files/timetable.db')
 #
@@ -86,70 +88,89 @@ def import_function():
         return
 
     try:
-        # Read Excel file into a pandas DataFrame
-        col_names = [
-            "srs_function",
-            "series_id",
-            "series_title",
-            "job_id",
-            "job_desc",
-            "remarks",
-            "start_run_date",
-            "end_run_date",
-            "run_mode",
-            "est_trx_vol",
-            "est_run_time",
-            "priority_level",
-            "server_name",
-            "script",
-            "os_option",
-            "schedule_type",
-            "month",
-            "week_no",
-            "day_no",
-            "yearly_run_date",
-            "days_of_week",
-            "exclude_public_holidays",
-            "start_time",
-            "dependent_job_id",
-            "minutes_dependent_job_id"
-        ]
+    #     # Read Excel file into a pandas DataFrame
+    #     col_names = [
+    #         "srs_function",
+    #         "series_id",
+    #         "series_title",
+    #         "job_id",
+    #         "job_desc",
+    #         "remarks",
+    #         "start_run_date",
+    #         "end_run_date",
+    #         "run_mode",
+    #         "est_trx_vol",
+    #         "est_run_time",
+    #         "priority_level",
+    #         "server_name",
+    #         "script",
+    #         "os_option",
+    #         "schedule_type",
+    #         "month",
+    #         "week_no",
+    #         "day_no",
+    #         "yearly_run_date",
+    #         "days_of_week",
+    #         "exclude_public_holidays",
+    #         "start_time",
+    #         "dependent_job_id",
+    #         "minutes_dependent_job_id"
+    #     ]
+    #
+    #     df_schema = {
+    #         "srs_function": str,
+    #         "series_id": str,
+    #         "series_title": str,
+    #         "job_id": str,
+    #         "job_desc": str,
+    #         "remarks": str,
+    #         "start_run_date": int,
+    #         "end_run_date": str,
+    #         "run_mode": str,
+    #         "est_trx_vol": int,
+    #         "est_run_time": int,
+    #         "priority_level": int,
+    #         "server_name": str,
+    #         "script": str,
+    #         "os_option": int,
+    #         "schedule_type": str,
+    #         "month": str,
+    #         "week_no": str,
+    #         "day_no": str,
+    #         "yearly_run_date": str,
+    #         "days_of_week": str,
+    #         "exclude_public_holidays": bool,
+    #         "start_time": str,
+    #         "dependent_job_id": str,
+    #         "minutes_dependent_job_id": str
+    #     }
 
-        df_schema = {
-            "srs_function": str,
-            "series_id": str,
-            "series_title": str,
-            "job_id": str,
-            "job_desc": str,
-            "remarks": str,
-            "start_run_date": int,
-            "end_run_date": str,
-            "run_mode": str,
-            "est_trx_vol": int,
-            "est_run_time": int,
-            "priority_level": int,
-            "server_name": str,
-            "script": str,
-            "os_option": int,
-            "schedule_type": str,
-            "month": str,
-            "week_no": str,
-            "day_no": str,
-            "yearly_run_date": str,
-            "days_of_week": str,
-            "exclude_public_holidays": bool,
-            "start_time": str,
-            "dependent_job_id": str,
-            "minutes_dependent_job_id": str
-        }
-
-        if file_type == ".xlsx":
-            df = pd.read_excel(filename,sheet_name="Template",names=col_names,dtype=df_schema)
-        elif file_type == ".csv":
-            df = pd.read_csv(filename,names=col_names,dtype=df_schema, encoding='cp1252',skiprows=1)
+        # if file_type == ".xlsx":
+        #     df = pd.read_excel(filename,sheet_name="Template",names=col_names,dtype=df_schema)
+        # elif file_type == ".csv":
+        #     df = pd.read_csv(filename,names=col_names,dtype=df_schema, encoding='cp1252',skiprows=1)
+        df = schedule_template_validation.load_template_sheet(file_type, filename)
         print(df)
+        df['validation_errors'] = df.apply(schedule_template_validation.validate_row, axis=1)
+        has_error = (df['validation_errors'].astype(str).str.strip() != '').any()
+        if has_error:
+            messagebox.showerror("Validation Error", "Error in Import, Download Error Report for Details!")
+            save = messagebox.askyesno("Save Report", "Do you want to save the error report?")
 
-        # Connect to SQLite database
+            if save:
+                report_file_path = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel files", "*.xlsx"), ("All files", "*.*")]
+            )
+
+            if report_file_path:
+                try:
+                    df.to_excel(report_file_path, index=False)
+                    messagebox.showinfo("Saved", f"Report saved to:\n{report_file_path}")
+                except Exception as e:
+                    messagebox.showerror("Save Failed", f"Could not save file:\n{str(e)}")
+        else:
+            df = df.drop('validation_errors', axis=1)
+
+# Connect to SQLite database
         conn = sqlite3.connect(r'files/timetable.db')
 
         # Load DataFrame into SQLite table (e.g., named 'excel_data')
