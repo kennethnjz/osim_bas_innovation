@@ -1,5 +1,28 @@
 Release Notes
 =============
+Date:   23/07/2025
+Name:   Kenneth Ng
+Release:
+1. Coding basic daily timetable generation logic
+2. Updated TIMETABLE DB to add in end_time
+
+Changes:
+files\timetable.db
+main.py
+windows\timetable_daily.py
+=============
+Date:   18/07/2025
+Name:   Kenneth Ng
+Release:
+1. Added basic coding scripts and structure for timetable generation
+
+Changes:
+files\timetable.db
+main.py
+windows\timetable_daily.py
+windows\timetable_dependency.py
+windows\timetable_weekly.py
+=============
 Date:   12/07/2025
 Name:   Jeremy
 Release:

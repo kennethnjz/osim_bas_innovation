@@ -188,14 +188,29 @@ def import_function():
         print(f"An error occurred: {e}")
 
 def generate_timetable():
+    conn = sqlite3.connect(r'files/timetable.db')
+
+    cursor = conn.cursor()
+
     try:
+        cursor.execute(f"DELETE FROM TIMETABLE")
+
+        conn.commit()  # Commit the transaction
+        print(f"Table TIMETABLE truncated successfully.")
+
         timetable_daily.generate_daily_timetable()
         timetable_weekly.generate_weekly_timetable()
         timetable_dependency.generate_dependency_timetable()
 
         messagebox.showinfo('Timetable Generation Successful', 'Timetable has been generated')
+    except sqlite3.Error as e:
+        print(f"Error truncating table: {e}")
+        conn.rollback() # Rollback if an error occurs
     except Exception as e:
         messagebox.showerror('Timetable Generation Failed', f'An error occurred: {e}')
+    finally:
+        cursor.close()
+        conn.close()
 
 # Export function
 def export_schedule():
