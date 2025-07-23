@@ -158,8 +158,7 @@ def import_function():
             save = messagebox.askyesno("Save Report", "Do you want to save the error report?")
 
             if save:
-                report_file_path = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel files", "*.xlsx"), ("All files", "*.*")]
-            )
+                report_file_path = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel files", "*.xlsx"), ("All files", "*.*")])
 
             if report_file_path:
                 try:
