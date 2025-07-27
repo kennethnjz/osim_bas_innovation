@@ -68,6 +68,12 @@ mandatory_fields = ["srs_function",
                     "priority_level",
                     "os_option",
                     "exclude_public_holidays"]
+
+
+def is_empty(val):
+    return pd.isna(val) or (isinstance(val, str) and val.strip() == '')
+
+
 def load_template_sheet(file_type, filename):
     """
     Loads the 'Template' sheet from the given Excel file into a pandas DataFrame.
@@ -92,13 +98,13 @@ def load_template_sheet(file_type, filename):
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
 
+
 def validate_row(row):
     errors = []
     missing_cols = []
     for col in mandatory_fields:
-        # Check for missing or empty values
         val = row[col]
-        if pd.isna(val) or (isinstance(val, str) and val.strip() == ''):
+        if is_empty(val):
             missing_cols.append(col)
 
     if missing_cols:
@@ -139,8 +145,8 @@ def validate_permissible_value(row, errors):
     # Validate simple (non-list) fields
     for column, allowed in permissible_values.items():
         val = row[column]
-        if not (pd.isna(val) or (isinstance(val, str) and val.strip() == '')):
-            if isinstance(val, str) and val.isdigit():  # convert string digits like "1" to int
+        if not is_empty(val):
+            if isinstance(val, str) and val.isdigit():
                 val = int(val)
             if val not in allowed:
                 errors.append(f"Invalid value '{val}' in column '{column}'")
@@ -148,7 +154,7 @@ def validate_permissible_value(row, errors):
     # Validate 'days_of_week' separately (semicolon-separated list)
     val = row.get('days_of_week')
     days_of_week_values = [1, 2, 3, 4, 5, 6, 7]
-    if not (pd.isna(val) or (isinstance(val, str) and val.strip() == '')):
+    if not is_empty(val) and isinstance(val, str):
         vals = val.split(';')
         for v in vals:
             v = v.strip()
@@ -163,12 +169,13 @@ def validate_permissible_value(row, errors):
 
     return errors
 
+
 def validate_date_fields(row, errors):
     date_fields = ['start_run_date', 'end_run_date', 'yearly_run_date']
 
     for field in date_fields:
         val = row.get(field)
-        if not (pd.isna(val) or (isinstance(val, str) and val.strip() == '')):
+        if not is_empty(val):
             if isinstance(val, str):
                 val = val.strip()
                 try:
@@ -186,10 +193,11 @@ def validate_date_fields(row, errors):
 
     return errors
 
+
 def validate_time_fields(row, errors):
     # Validate 'Start Time' - must be HHMM between 0000 and 2359
     start_time = row.get('start_time')
-    if not (pd.isna(start_time) or (isinstance(start_time, str) and start_time.strip() == '')):
+    if not is_empty(start_time):
         if isinstance(start_time, str):
             start_time = start_time.strip()
             if len(start_time) != 4 or not start_time.isdigit():
@@ -220,10 +228,10 @@ def validate_time_fields(row, errors):
 
     return errors
 
+
 def validate_weekly_data(row, errors):
     val = row.get('days_of_week')
-    if pd.isna(val) or (isinstance(val, str) and val.strip() == ''):
+    if is_empty(val):
         errors.append(f"Required 'days_of_week' for weekly schedule type")
-
     return errors
 
