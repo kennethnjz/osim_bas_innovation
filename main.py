@@ -215,7 +215,35 @@ def generate_timetable():
 def export_schedule():
     try:
         conn = sqlite3.connect(r'files/timetable.db')
-        df = pd.read_sql_query('SELECT * FROM OPERATING_SCHEDULE', conn)
+        col_names = [
+            "srs_function",
+            "series_id",
+            "series_title",
+            "job_id",
+            "job_desc",
+            "remarks",
+            "start_run_date",
+            "end_run_date",
+            "run_mode",
+            "est_trx_vol",
+            "est_run_time",
+            "priority_level",
+            "server_name",
+            "script",
+            "os_option",
+            "schedule_type",
+            "month",
+            "week_no",
+            "day_no",
+            "yearly_run_date",
+            "days_of_week",
+            "exclude_public_holidays",
+            "start_time",
+            "dependent_job_id",
+            "minutes_dependent_job_id"
+        ]
+        query = f'SELECT {', '.join(col_names)} FROM OPERATING_SCHEDULE'
+        df = pd.read_sql_query(query, conn)
         conn.close()
         if df.empty:
             messagebox.showwarning('No Data', 'No data found in OPERATING_SCHEDULE!')

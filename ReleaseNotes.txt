@@ -1,5 +1,12 @@
 Release Notes
 =============
+Date:   02/08/2025
+Name:   Jeremy
+Release:
+1. Updated export functionality to match import template column order and headers
+
+Release Notes
+=============
 Date:   23/07/2025
 Name:   Kenneth Ng
 Release:
