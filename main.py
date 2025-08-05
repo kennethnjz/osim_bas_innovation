@@ -242,7 +242,7 @@ def export_schedule():
             "dependent_job_id",
             "minutes_dependent_job_id"
         ]
-        query = f'SELECT {', '.join(col_names)} FROM OPERATING_SCHEDULE'
+        query = f"SELECT {', '.join(col_names)} FROM OPERATING_SCHEDULE"
         df = pd.read_sql_query(query, conn)
         conn.close()
         if df.empty:
