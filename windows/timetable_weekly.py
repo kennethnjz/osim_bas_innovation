@@ -50,7 +50,7 @@ def expand_root_jobs(df, date_range):
     expanded_df = pd.DataFrame(expanded_jobs).reset_index(drop=True)
     return expanded_df
 
-def fill_schedule_24h(df):
+def fill_schedule_24h(df, date_range):
     # Fill start_time and end_time based on dependencies
     while df['start_time'].isna().any() or df['end_time'].isna().any():
         changes = False
@@ -88,6 +88,7 @@ def fill_schedule_24h(df):
                         df.at[idx, 'run_date'] = d
                         break
 
+    dependent_run_date = ''
     # Assign run_date for dependent jobs considering 24h rollover
     while df['run_date'].isna().any():
         changes = False
@@ -95,11 +96,16 @@ def fill_schedule_24h(df):
             if pd.isna(row['run_date']):
                 dep_job_id = row['dependent_job_id']
                 if pd.notna(dep_job_id):
-                    dep_row = df[df['job_id'] == dep_job_id]
-                    if dep_row.empty or pd.isna(dep_row.iloc[0]['run_date']):
+                    # dep_row = df[df['job_id'] == dep_job_id]
+                    # if dep_row.empty or pd.isna(dep_row.iloc[0]['run_date']):
+                    #     continue
+                    parent_job_row = get_parent_job_row(df, dep_job_id, dependent_run_date)
+                    if parent_job_row is None or pd.isna(parent_job_row['run_date']):
                         continue
-                    dep_run_date = dep_row.iloc[0]['run_date']
-                    dep_end_time = dep_row.iloc[0]['end_time']
+                    # dep_run_date = dep_row.iloc[0]['run_date']
+                    # dep_end_time = dep_row.iloc[0]['end_time']
+                    dep_run_date = parent_job_row['run_date']
+                    dep_end_time = parent_job_row['end_time']
 
                     # Calculate day offset for dependent job end_time and current job start_time
                     dep_day_offset = dep_end_time // 2400
@@ -123,6 +129,8 @@ def fill_schedule_24h(df):
 
                     df.at[idx, 'run_date'] = run_date
                     changes = True
+            else:
+                dependent_run_date = row['run_date']
         if not changes:
             break
 
@@ -143,9 +151,27 @@ def fill_schedule_24h(df):
 
     return df
 
+def get_parent_job_row(df, dep_job_id, dependent_run_date):
+    # Get all parent rows with job_id == dep_job_id
+    parent_rows = df[df['job_id'] == dep_job_id].sort_values('run_date')
+    if dependent_run_date is not None and not pd.isna(dependent_run_date):
+        # Try to find exact matching run_date first
+        match = parent_rows[parent_rows['run_date'] == dependent_run_date]
+        if not match.empty:
+            return match.iloc[0]
+        # Otherwise find latest parent run_date before dependent run_date
+        before = parent_rows[parent_rows['run_date'] < dependent_run_date]
+        if not before.empty:
+            return before.iloc[-1]
+    # fallback to last parent row if no better match
+    if not parent_rows.empty:
+        return parent_rows.iloc[-1]
+    return None
+
+
 def generate_weekly_timetable():
     conn = sqlite3.connect(r'files/timetable.db')
-    df = pd.read_sql_query("SELECT * FROM OPERATING_SCHEDULE WHERE schedule_type = '2'", conn)
+    df = pd.read_sql_query("SELECT * FROM OPERATING_SCHEDULE WHERE job_id like '___W%'", conn)
 
     if df.empty:
         messagebox.showwarning('No Data', 'No data found in OPERATING_SCHEDULE!')
@@ -160,19 +186,20 @@ def generate_weekly_timetable():
     df_timetable['job_id'] = df['job_id']
     df_timetable['series_id'] = df['series_id']
     df_timetable['dependent_job_id'] = df['dependent_job_id']
-    df_timetable['start_time'] = df['start_time'].astype(float)
-    df_timetable['est_run_time'] = df['est_run_time'].astype(float)
-    df_timetable['minutes_dependent_job_id'] = df['minutes_dependent_job_id'].astype(float)
-    df_timetable['days_of_week'] = df['days_of_week']
-    df_timetable['end_time'] = df['end_time'].astype(float)
-    df_timetable['days_of_week_list'] = df_timetable['days_of_week'].apply(parse_days_of_week)
+    df_timetable['start_time'] = pd.to_numeric(df['start_time'], errors='coerce').fillna(0).astype(int)
+    df_timetable['est_run_time'] = pd.to_numeric(df['est_run_time'], errors='coerce').fillna(0).astype(int)
+    df_timetable['minutes_dependent_job_id'] = pd.to_numeric(df['minutes_dependent_job_id'], errors='coerce').fillna(0).astype(int)
 
+    df_timetable['days_of_week'] = df['days_of_week']
+    df_timetable['end_time'] = pd.to_numeric(df_timetable['minutes_dependent_job_id'], errors='coerce').fillna(0).astype(int)
+    df_timetable['days_of_week_list'] = df_timetable['days_of_week'].apply(parse_days_of_week)
     today = datetime.today().date()
     date_range = [today + timedelta(days=i) for i in range(14)]
 
     df_timetable['days_of_week_list'] = df_timetable['days_of_week'].fillna('').apply(lambda x: [int(d) for d in x.split(';') if d.strip().isdigit()])
     df_expanded = expand_root_jobs(df_timetable, date_range)
-    df_filled = fill_schedule_24h(df_expanded)
+
+    df_filled = fill_schedule_24h(df_expanded,date_range)
     df_filled = df_filled[columns]
 
     df_filled.to_sql('TIMETABLE', conn, if_exists='append', index=False)
