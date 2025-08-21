@@ -27,12 +27,16 @@ def expand_root_jobs(df, date_range):
 
     for idx, row in df.iterrows():
         if pd.isna(row['dependent_job_id']):  # root job
+            if int(row['end_run_date']) <= int(datetime.today().strftime('%Y%m%d')):
+                continue
+
             valid_days = row['days_of_week_list']
             run_dates = [d for d in date_range if (not valid_days or d.isoweekday() in valid_days)]
 
             for run_date in run_dates:
                 chain = [row.copy()]
                 chain[0]['run_date'] = run_date
+                chain[0]['end_time'] = chain[0]['start_time'] + chain[0]['est_run_time']
                 expanded_jobs.append(chain[0])
 
                 # Now follow the dependency chain
@@ -62,6 +66,7 @@ def fill_schedule_24h(df, date_range):
                     if dep_row.empty:
                         continue
                     dep_end = dep_row['end_time'].values[0]
+
                     if pd.isna(dep_end):
                         continue
                     # Calculate start_time = dependent end_time + minutes_dependent_job_id
@@ -170,8 +175,9 @@ def get_parent_job_row(df, dep_job_id, dependent_run_date):
 
 
 def generate_weekly_timetable():
+    today_str = datetime.today().strftime('%Y%m%d')
     conn = sqlite3.connect(r'files/timetable.db')
-    df = pd.read_sql_query("SELECT * FROM OPERATING_SCHEDULE WHERE job_id like '___W%'", conn)
+    df = pd.read_sql_query("SELECT * FROM OPERATING_SCHEDULE WHERE job_id like '___W%' AND start_run_date <= '{today_str}'", conn)
 
     if df.empty:
         messagebox.showwarning('No Data', 'No data found in OPERATING_SCHEDULE!')
@@ -186,12 +192,14 @@ def generate_weekly_timetable():
     df_timetable['job_id'] = df['job_id']
     df_timetable['series_id'] = df['series_id']
     df_timetable['dependent_job_id'] = df['dependent_job_id']
-    df_timetable['start_time'] = pd.to_numeric(df['start_time'], errors='coerce').fillna(0).astype(int)
+    # df_timetable['start_time'] = pd.to_numeric(df['start_time'], errors='coerce').fillna(0).astype(int)
+    # Convert safely
+    df_timetable['start_time'] = pd.to_numeric(df['start_time'], errors='coerce')
+    # df_timetable['end_time'] = pd.to_numeric(df['end_time'], errors='coerce')
     df_timetable['est_run_time'] = pd.to_numeric(df['est_run_time'], errors='coerce').fillna(0).astype(int)
     df_timetable['minutes_dependent_job_id'] = pd.to_numeric(df['minutes_dependent_job_id'], errors='coerce').fillna(0).astype(int)
-
+    df_timetable['end_run_date'] = pd.to_numeric(df['end_run_date'], errors='coerce').fillna(99999999).astype(int)
     df_timetable['days_of_week'] = df['days_of_week']
-    df_timetable['end_time'] = pd.to_numeric(df_timetable['minutes_dependent_job_id'], errors='coerce').fillna(0).astype(int)
     df_timetable['days_of_week_list'] = df_timetable['days_of_week'].apply(parse_days_of_week)
     today = datetime.today().date()
     date_range = [today + timedelta(days=i) for i in range(14)]
@@ -200,7 +208,29 @@ def generate_weekly_timetable():
     df_expanded = expand_root_jobs(df_timetable, date_range)
 
     df_filled = fill_schedule_24h(df_expanded,date_range)
-    df_filled = df_filled[columns]
+    df_filled = df_filled[columns].copy()
+    # Apply conversion to start_time and end_time
+    df_filled['start_time'] = df_filled['start_time'].apply(hhmm_to_str)
+    df_filled['end_time'] = df_filled['end_time'].apply(hhmm_to_str)
+
+    # Convert run_date to YYYYMMDD format as integer
+    df_filled['run_date'] = pd.to_datetime(df_filled['run_date'], errors='coerce')
+    df_filled['run_date'] = df_filled['run_date'].dt.strftime('%Y%m%d').astype(int)
+
+
+    print('------------------------------')
+    print(df_filled)
 
     df_filled.to_sql('TIMETABLE', conn, if_exists='append', index=False)
     conn.close()
+
+# Function to convert HHMM integer to HH:MM string
+def hhmm_to_str(time_val):
+    if pd.isna(time_val):
+        return ''
+    time_val = int(time_val)
+    hour = time_val // 100
+    minute = time_val % 100
+    return f"{hour:02d}{minute:02d}"
+
+
