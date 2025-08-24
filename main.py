@@ -11,6 +11,8 @@ import numpy as np
 from sqlalchemy.types import *
 import os, sys
 
+import db_setup
+
 import timetable_daily
 import timetable_dependency
 import timetable_weekly
@@ -22,6 +24,7 @@ import sqlite3
 import pandas as pd
 
 import schedule_template_validation
+import populate_db_from_schedule
 
 # def challenge():
 #     conn = sqlite3.connect(r'files/timetable.db')
@@ -179,6 +182,9 @@ def import_function():
         conn.commit()
         conn.close()
         print("Data successfully loaded from Excel to SQLite!")
+
+        # Populate other database tables from OPERATING_SCHEDULE
+        populate_db_from_schedule.populate_data()
 
         messagebox.showinfo('Schedule Import Successful', 'Schedule has been successfully imported')
 
