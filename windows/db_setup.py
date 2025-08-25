@@ -12,7 +12,7 @@ def create_database():
     # Create tables
     try:
         # Operating Schedule table
-        # add columns :
+        # columns missing :
         # srs_title TEXT,
         # no_error TEXT,
         # run_if_scheduled TEXT,
@@ -156,11 +156,9 @@ def create_database():
         CREATE TABLE IF NOT EXISTS JOB_DEPENDENCY (
             job_id TEXT,
             job_id_parent TEXT,
-            occurrence_id TEXT,
-            run_option TEXT,
+            timetable_id TEXT,
             run_if_scheduled TEXT,
-            occurrence TEXT,
-            PRIMARY KEY (job_id, job_id_parent, occurrence_id)
+            PRIMARY KEY (job_id, job_id_parent, timetable_id)
         )
         ''')
 
@@ -192,8 +190,9 @@ def create_database():
             series_id TEXT,
             timetable_id TEXT,
             exclude_ph TEXT,
-            days_of_week TEXT,
             run_time TEXT,
+			run_option TEXT,
+            days_of_week TEXT,
             PRIMARY KEY (job_id, timetable_id)
         )
         ''')
@@ -205,8 +204,9 @@ def create_database():
             series_id TEXT,
             timetable_id TEXT,
             exclude_ph TEXT,
-            days_of_week TEXT,
             run_time TEXT,
+			run_option TEXT,
+            days_of_week TEXT,
             PRIMARY KEY (job_id, timetable_id)
         )
         ''')
@@ -218,10 +218,10 @@ def create_database():
             series_id TEXT,
             timetable_id TEXT,
             exclude_ph TEXT,
+            run_time TEXT,
+			run_option TEXT,
             day_of_month TEXT,
             month TEXT,
-            run_time TEXT,
-            no_run TEXT,
             PRIMARY KEY (job_id, timetable_id)
         )
         ''')
@@ -261,7 +261,6 @@ def create_database():
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_SRS_FUNCTION_system_code ON SRS_FUNCTION(system_code)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_RUN_SERIES_system_code_frequency ON RUN_SERIES(system_code, frequency)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_RUNCHART_system_code ON RUNCHART(system_code)')
-        cursor.execute('CREATE INDEX IF NOT EXISTS idx_JOB_DEPENDENCY_occurrence ON JOB_DEPENDENCY(occurrence)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_TIMETABLE_DAILY_series_id ON TIMETABLE_DAILY(series_id)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_TIMETABLE_WEEKLY_series_id ON TIMETABLE_WEEKLY(series_id)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_TIMETABLE_MONTHLY_series_id ON TIMETABLE_MONTHLY(series_id)')
