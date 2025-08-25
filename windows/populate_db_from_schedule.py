@@ -51,30 +51,35 @@ def populate_data():
         runcharts = {}
         servers = {}
         scripts = {}
-        jobs = []
+        jobs = {}  # Changed to dict to store unique jobs by job_id
         job_srs_mappings = []
         job_dependencies = []
         timetable_daily = []
         timetable_weekly = []
         timetable_monthly = []
 
-        # Process each row in OPERATING_SCHEDULE
-        for idx, row in df.iterrows():
+        # Group records by job_id for processing
+        job_groups = df.groupby('job_id')
+
+        # Process each job_id group
+        for job_id, job_records in job_groups:
+            # Process the first record for JOB table (since job_id is unique in JOB table)
+            first_record = job_records.iloc[0]
+
             # Extract srs_function components
-            srs_function = str(row['srs_function']).strip() if pd.notna(row['srs_function']) else ""
+            srs_function = str(first_record['srs_function']).strip() if pd.notna(first_record['srs_function']) else ""
             srs_function_no, srs_function_title, runchart_filename = parse_srs_function(
                 srs_function, srs_function_frequency_counts
             )
 
             # Extract frequency from job_id (4th character)
-            job_id = str(row['job_id']).strip() if pd.notna(row['job_id']) else ""
             frequency = job_id[3] if len(job_id) > 3 else ""
 
             # Calculate series_sequence_1
             if frequency not in frequency_counts:
                 frequency_counts[frequency] = 0
 
-            series_id_raw = str(row['series_id']).strip() if pd.notna(row['series_id']) else ""
+            series_id_raw = str(first_record['series_id']).strip() if pd.notna(first_record['series_id']) else ""
 
             # Generate series_id if empty
             if not series_id_raw:
@@ -82,7 +87,7 @@ def populate_data():
                 series_id = f"{frequency}{frequency_counts[frequency]:03d}"
             else:
                 series_id = series_id_raw
-                if series_id not in [rs['series_id'] for rs in run_series.values()]:
+                if series_id not in run_series:
                     frequency_counts[frequency] += 1
 
             series_sequence_1 = frequency_counts[frequency]
@@ -103,7 +108,7 @@ def populate_data():
                     'frequency': frequency,
                     'series_sequence_1': str(series_sequence_1),
                     'series_sequence_2': "",
-                    'series_title': str(row['series_title']).strip() if pd.notna(row['series_title']) else ""
+                    'series_title': str(first_record['series_title']).strip() if pd.notna(first_record['series_title']) else ""
                 }
 
             # Store RUNCHART
@@ -116,8 +121,8 @@ def populate_data():
                 runchart_counter += 1
 
             # Extract server information
-            server_name = str(row['server_name']).strip() if pd.notna(row['server_name']) else ""
-            server_type = extract_server_type(str(row['script']) if pd.notna(row['script']) else "")
+            server_name = str(first_record['server_name']).strip() if pd.notna(first_record['server_name']) else ""
+            server_type = extract_server_type(str(first_record['script']) if pd.notna(first_record['script']) else "")
 
             server_key = (server_name, server_type)
             if server_name and server_key not in servers:
@@ -129,7 +134,7 @@ def populate_data():
                 server_counter += 1
 
             # Extract script and args
-            script_text, args = parse_script_field(str(row['script']) if pd.notna(row['script']) else "")
+            script_text, args = parse_script_field(str(first_record['script']) if pd.notna(first_record['script']) else "")
 
             if script_text and script_text not in scripts:
                 scripts[script_text] = {
@@ -139,7 +144,7 @@ def populate_data():
                 script_counter += 1
 
             # Calculate job_sequence (order within series)
-            jobs_in_series = [j for j in jobs if j['series_id'] == series_id]
+            jobs_in_series = [j for j in jobs.values() if j['series_id'] == series_id]
             job_sequence = len(jobs_in_series) + 1
 
             # Get IDs for foreign keys
@@ -147,97 +152,54 @@ def populate_data():
             server_id = servers.get(server_key, {}).get('server_id', "")
             script_id = scripts.get(script_text, {}).get('script_id', "")
 
-            # Store JOB
-            job_record = {
-                'system_code': system_code,
-                'job_id': job_id,
-                'series_id': series_id,
-                'job_sequence': str(job_sequence),
-                'runchart_id': runchart_id,
-                'run_mode': str(row['run_mode']).strip() if pd.notna(row['run_mode']) else "",
-                'est_run_time': str(row['est_run_time']).strip() if pd.notna(row['est_run_time']) else "",
-                'est_volume': str(row['est_trx_vol']).strip() if pd.notna(row['est_trx_vol']) else "",
-                'job_description': str(row['job_desc']).strip() if pd.notna(row['job_desc']) else "",
-                'priority': str(row['priority_level']) if pd.notna(row['priority_level']) else "",
-                'server_id': server_id,
-                'script_id': script_id,
-                'args': args,
-                'first_run_date': str(row['start_run_date']).strip() if pd.notna(row['start_run_date']) else "",
-                'suspended_date': "",
-                'last_run_date': str(row['end_run_date']).strip() if pd.notna(row['end_run_date']) else "",
-                'remarks': str(row['remarks']).strip() if pd.notna(row['remarks']) else ""
-            }
-            jobs.append(job_record)
-
-            # Store JOB_SRS_MAPPING
-            if srs_function_no:
-                job_srs_mappings.append({
+            # Store JOB (only once per job_id)
+            if job_id not in jobs:
+                job_record = {
                     'system_code': system_code,
                     'job_id': job_id,
-                    'srs_id': "",
-                    'srs_function_no': srs_function_no,
-                    'srs_version_number': ""
-                })
+                    'series_id': series_id,
+                    'job_sequence': str(job_sequence),
+                    'runchart_id': runchart_id,
+                    'run_mode': str(first_record['run_mode']).strip() if pd.notna(first_record['run_mode']) else "",
+                    'est_run_time': str(first_record['est_run_time']).strip() if pd.notna(first_record['est_run_time']) else "",
+                    'est_volume': str(first_record['est_trx_vol']).strip() if pd.notna(first_record['est_trx_vol']) else "",
+                    'job_description': str(first_record['job_desc']).strip() if pd.notna(first_record['job_desc']) else "",
+                    'priority': str(first_record['priority_level']) if pd.notna(first_record['priority_level']) else "",
+                    'server_id': server_id,
+                    'script_id': script_id,
+                    'args': args,
+                    'first_run_date': str(first_record['start_run_date']).strip() if pd.notna(first_record['start_run_date']) else "",
+                    'suspended_date': "",
+                    'last_run_date': str(first_record['end_run_date']).strip() if pd.notna(first_record['end_run_date']) else "",
+                    'remarks': str(first_record['remarks']).strip() if pd.notna(first_record['remarks']) else ""
+                }
+                jobs[job_id] = job_record
 
-            # Process JOB_DEPENDENCY
-            dependent_job_id = str(row['dependent_job_id']).strip() if pd.notna(row['dependent_job_id']) else ""
-            if dependent_job_id:
-                parent_job_ids = [parent_id.strip() for parent_id in dependent_job_id.split(DELIMITER) if parent_id.strip()]
-                for parent_job_id in parent_job_ids:
-                    job_dependencies.append({
+                # Store JOB_SRS_MAPPING (only once per job_id)
+                if srs_function_no:
+                    job_srs_mappings.append({
+                        'system_code': system_code,
                         'job_id': job_id,
-                        'job_id_parent': parent_job_id,
-                        'occurrence_id': "",
-                        'run_option': str(row['minutes_dependent_job_id']).strip() if pd.notna(row['minutes_dependent_job_id']) else "",
-                        'run_if_scheduled': "",
-                        'occurrence': ""
+                        'srs_id': "",
+                        'srs_function_no': srs_function_no,
+                        'srs_version_number': ""
                     })
 
-            # Process timetable records based on frequency
-            exclude_ph = str(row['exclude_public_holidays']).strip() if pd.notna(row['exclude_public_holidays']) else ""
-            run_time = str(row['start_time']).strip() if pd.notna(row['start_time']) else ""
-            timetable_id = "1"  # Each job_id only has 1 run_time currently
+            # Process timetable records and dependencies for each record of this job_id
+            timetable_records = process_job_timetables(job_id, job_records, series_id)
 
-            # Process days_of_week
-            days_of_week_raw = str(row['days_of_week']).strip() if pd.notna(row['days_of_week']) else ""
-            if not days_of_week_raw:
-                days_of_week = "1;2;3;4;5;6;7"
-            else:
-                days_of_week = days_of_week_raw
+            # Add to appropriate timetable collections
+            for record in timetable_records:
+                if frequency == 'D':
+                    timetable_daily.append(record)
+                elif frequency == 'W':
+                    timetable_weekly.append(record)
+                elif frequency == 'M':
+                    timetable_monthly.append(record)
 
-            if frequency == 'D':
-                timetable_daily.append({
-                    'job_id': job_id,
-                    'series_id': series_id,
-                    'timetable_id': timetable_id,
-                    'exclude_ph': exclude_ph,
-                    'days_of_week': days_of_week,
-                    'run_time': run_time
-                })
-            elif frequency == 'W':
-                timetable_weekly.append({
-                    'job_id': job_id,
-                    'series_id': series_id,
-                    'timetable_id': timetable_id,
-                    'exclude_ph': exclude_ph,
-                    'days_of_week': days_of_week,
-                    'run_time': run_time
-                })
-            elif frequency == 'M':
-                day_of_month = str(row['day_no']).strip() if pd.notna(row['day_no']) else ""
-                month = str(row['month']).strip() if pd.notna(row['month']) else ""
-                no_run = calculate_no_run_months(month)
-
-                timetable_monthly.append({
-                    'job_id': job_id,
-                    'series_id': series_id,
-                    'timetable_id': timetable_id,
-                    'exclude_ph': exclude_ph,
-                    'day_of_month': day_of_month,
-                    'month': month,
-                    'run_time': run_time,
-                    'no_run': no_run
-                })
+            # Process job dependencies
+            dependencies = process_job_dependencies(job_id, job_records)
+            job_dependencies.extend(dependencies)
 
         # Insert data into tables
         insert_srs_functions(cursor, list(srs_functions.values()))
@@ -245,7 +207,7 @@ def populate_data():
         insert_runcharts(cursor, list(runcharts.values()))
         insert_servers(cursor, list(servers.values()))
         insert_scripts(cursor, list(scripts.values()))
-        insert_jobs(cursor, jobs)
+        insert_jobs(cursor, list(jobs.values()))
         insert_job_srs_mappings(cursor, job_srs_mappings)
         insert_job_dependencies(cursor, job_dependencies)
         insert_timetable_daily(cursor, timetable_daily)
@@ -262,31 +224,217 @@ def populate_data():
     finally:
         conn.close()
 
-def calculate_no_run_months(month_field):
-    """Calculate no_run months based on month field"""
-    if not month_field:
-        return ""
+def process_job_timetables(job_id, job_records, series_id):
+    """
+    Process timetable records for a job_id, handling multiple schedules
+    """
+    frequency = job_id[3] if len(job_id) > 3 else ""
+    timetable_records = []
 
-    all_months = set(range(1, 13))  # Months 1-12
-    run_months = set()
+    if frequency in ['D', 'W']:
+        # Process daily/weekly jobs
+        records_list = []
 
-    # Parse the month field
-    month_parts = [part.strip() for part in month_field.split(DELIMITER) if part.strip()]
-    for month_str in month_parts:
-        try:
-            month_num = int(month_str)
-            if 1 <= month_num <= 12:
-                run_months.add(month_num)
-        except ValueError:
-            continue
+        for _, row in job_records.iterrows():
+            days_of_week = str(row['days_of_week']).strip() if pd.notna(row['days_of_week']) else ""
+            start_time = str(row['start_time']).strip() if pd.notna(row['start_time']) else ""
+            minutes_dependent = str(row['minutes_dependent_job_id']).strip() if pd.notna(row['minutes_dependent_job_id']) else ""
+            exclude_ph = str(row['exclude_public_holidays']).strip() if pd.notna(row['exclude_public_holidays']) else ""
 
-    # Calculate no_run months
-    no_run_months = all_months - run_months
+            records_list.append({
+                'days_of_week': days_of_week,
+                'start_time': start_time,
+                'minutes_dependent': minutes_dependent,
+                'exclude_ph': exclude_ph,
+                'row_data': row
+            })
 
-    if not no_run_months:
-        return ""
+        # Sort records according to requirements
+        sorted_records = sort_daily_weekly_records(records_list)
 
-    return DELIMITER.join(str(month) for month in sorted(no_run_months))
+        # Generate timetable_id and process records
+        all_days = set(['1', '2', '3', '4', '5', '6', '7'])
+        used_days = set()
+
+        for i, record in enumerate(sorted_records):
+            timetable_id = f"{frequency}{i + 1}"
+
+            if record['days_of_week'] == "":
+                # Empty days_of_week gets leftover days
+                leftover_days = all_days - used_days
+                days_of_week = DELIMITER.join(sorted(leftover_days))
+            else:
+                days_of_week = record['days_of_week']
+                # Track used days
+                for day in record['days_of_week'].split(DELIMITER):
+                    if day.strip():
+                        used_days.add(day.strip())
+
+            timetable_record = {
+                'job_id': job_id,
+                'series_id': series_id,
+                'timetable_id': timetable_id,
+                'exclude_ph': record['exclude_ph'],
+                'days_of_week': days_of_week,
+                'run_time': record['start_time'],
+                'run_option': record['minutes_dependent']
+            }
+            timetable_records.append(timetable_record)
+
+    elif frequency == 'M':
+        # Process monthly jobs
+        records_list = []
+
+        for _, row in job_records.iterrows():
+            month = str(row['month']).strip() if pd.notna(row['month']) else ""
+            day_of_month = str(row['day_no']).strip() if pd.notna(row['day_no']) else ""
+            start_time = str(row['start_time']).strip() if pd.notna(row['start_time']) else ""
+            minutes_dependent = str(row['minutes_dependent_job_id']).strip() if pd.notna(row['minutes_dependent_job_id']) else ""
+            exclude_ph = str(row['exclude_public_holidays']).strip() if pd.notna(row['exclude_public_holidays']) else ""
+
+            records_list.append({
+                'month': month,
+                'day_of_month': day_of_month,
+                'start_time': start_time,
+                'minutes_dependent': minutes_dependent,
+                'exclude_ph': exclude_ph,
+                'row_data': row
+            })
+
+        # Sort records according to requirements
+        sorted_records = sort_monthly_records(records_list)
+
+        # Generate timetable_id and process records
+        all_months = set(['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'])
+        used_months = set()
+
+        for i, record in enumerate(sorted_records):
+            timetable_id = f"M{i + 1}"
+
+            if record['month'] == "":
+                # Empty month gets leftover months
+                leftover_months = all_months - used_months
+                month = DELIMITER.join(sorted(leftover_months, key=int))
+            else:
+                month = record['month']
+                # Track used months
+                for m in record['month'].split(DELIMITER):
+                    if m.strip():
+                        used_months.add(m.strip())
+
+            timetable_record = {
+                'job_id': job_id,
+                'series_id': series_id,
+                'timetable_id': timetable_id,
+                'exclude_ph': record['exclude_ph'],
+                'day_of_month': record['day_of_month'],
+                'month': month,
+                'run_time': record['start_time'],
+                'run_option': record['minutes_dependent']
+            }
+            timetable_records.append(timetable_record)
+
+    return timetable_records
+
+def sort_daily_weekly_records(records_list):
+    """
+    Sort daily/weekly records according to requirements:
+    1. Empty days_of_week first
+    2. Then by descending number of days
+    3. If same number of days, by earliest day
+    """
+    def sort_key(record):
+        days_of_week = record['days_of_week']
+
+        if days_of_week == "":
+            return (0, 0)  # Empty string comes first
+
+        days = [d.strip() for d in days_of_week.split(DELIMITER) if d.strip()]
+        num_days = len(days)
+        first_day = min([int(d) for d in days]) if days else 8
+
+        return (-num_days, first_day)  # Negative for descending order
+
+    return sorted(records_list, key=sort_key)
+
+def sort_monthly_records(records_list):
+    """
+    Sort monthly records according to requirements:
+    1. Empty month first
+    2. Then by descending number of months
+    3. If same number of months, by earliest month
+    """
+    def sort_key(record):
+        month = record['month']
+
+        if month == "":
+            return (0, 0)  # Empty string comes first
+
+        months = [m.strip() for m in month.split(DELIMITER) if m.strip()]
+        num_months = len(months)
+        first_month = min([int(m) for m in months]) if months else 13
+
+        return (-num_months, first_month)  # Negative for descending order
+
+    return sorted(records_list, key=sort_key)
+
+def process_job_dependencies(job_id, job_records):
+    """
+    Process job dependencies for all timetable records of a job_id
+    """
+    frequency = job_id[3] if len(job_id) > 3 else ""
+    dependencies = []
+
+    # Get sorted records to match timetable_id generation
+    if frequency in ['D', 'W']:
+        records_list = []
+        for _, row in job_records.iterrows():
+            days_of_week = str(row['days_of_week']).strip() if pd.notna(row['days_of_week']) else ""
+            records_list.append({
+                'days_of_week': days_of_week,
+                'row_data': row
+            })
+        sorted_records = sort_daily_weekly_records(records_list)
+
+        for i, record in enumerate(sorted_records):
+            timetable_id = f"{frequency}{i + 1}"
+            row = record['row_data']
+
+            dependent_job_id = str(row['dependent_job_id']).strip() if pd.notna(row['dependent_job_id']) else ""
+            if dependent_job_id:
+                parent_job_ids = [parent_id.strip() for parent_id in dependent_job_id.split(DELIMITER) if parent_id.strip()]
+                for parent_job_id in parent_job_ids:
+                    dependencies.append({
+                        'job_id': job_id,
+                        'job_id_parent': parent_job_id,
+                        'timetable_id': timetable_id
+                    })
+
+    elif frequency == 'M':
+        records_list = []
+        for _, row in job_records.iterrows():
+            month = str(row['month']).strip() if pd.notna(row['month']) else ""
+            records_list.append({
+                'month': month,
+                'row_data': row
+            })
+        sorted_records = sort_monthly_records(records_list)
+
+        for i, record in enumerate(sorted_records):
+            timetable_id = f"M{i + 1}"
+            row = record['row_data']
+
+            dependent_job_id = str(row['dependent_job_id']).strip() if pd.notna(row['dependent_job_id']) else ""
+            if dependent_job_id:
+                parent_job_ids = [parent_id.strip() for parent_id in dependent_job_id.split(DELIMITER) if parent_id.strip()]
+                for parent_job_id in parent_job_ids:
+                    dependencies.append({
+                        'job_id': job_id,
+                        'job_id_parent': parent_job_id,
+                        'timetable_id': timetable_id
+                    })
+
+    return dependencies
 
 def parse_srs_function(srs_function, frequency_counts):
     """Parse srs_function field to extract components"""
@@ -423,45 +571,44 @@ def insert_job_dependencies(cursor, dependencies):
     unique_dependencies = []
     seen = set()
     for record in dependencies:
-        key = (record['job_id'], record['job_id_parent'], record['occurrence_id'])
+        key = (record['job_id'], record['job_id_parent'], record['timetable_id'])
         if key not in seen:
             seen.add(key)
             unique_dependencies.append(record)
 
     for record in unique_dependencies:
         cursor.execute("""
-            INSERT INTO JOB_DEPENDENCY (job_id, job_id_parent, occurrence_id, run_option, run_if_scheduled, occurrence)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (record['job_id'], record['job_id_parent'], record['occurrence_id'],
-              record['run_option'], record['run_if_scheduled'], record['occurrence']))
+            INSERT INTO JOB_DEPENDENCY (job_id, job_id_parent, timetable_id)
+            VALUES (?, ?, ?)
+        """, (record['job_id'], record['job_id_parent'], record['timetable_id']))
 
 def insert_timetable_daily(cursor, timetable_records):
     """Insert TIMETABLE_DAILY records"""
     for record in timetable_records:
         cursor.execute("""
-            INSERT INTO TIMETABLE_DAILY (job_id, series_id, timetable_id, exclude_ph, days_of_week, run_time)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO TIMETABLE_DAILY (job_id, series_id, timetable_id, exclude_ph, run_time, run_option, days_of_week)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
         """, (record['job_id'], record['series_id'], record['timetable_id'],
-              record['exclude_ph'], record['days_of_week'], record['run_time']))
+              record['exclude_ph'], record['run_time'], record['run_option'], record['days_of_week']))
 
 def insert_timetable_weekly(cursor, timetable_records):
     """Insert TIMETABLE_WEEKLY records"""
     for record in timetable_records:
         cursor.execute("""
-            INSERT INTO TIMETABLE_WEEKLY (job_id, series_id, timetable_id, exclude_ph, days_of_week, run_time)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO TIMETABLE_WEEKLY (job_id, series_id, timetable_id, exclude_ph, run_time, run_option, days_of_week)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
         """, (record['job_id'], record['series_id'], record['timetable_id'],
-              record['exclude_ph'], record['days_of_week'], record['run_time']))
+              record['exclude_ph'], record['run_time'], record['run_option'], record['days_of_week']))
 
 def insert_timetable_monthly(cursor, timetable_records):
     """Insert TIMETABLE_MONTHLY records"""
     for record in timetable_records:
         cursor.execute("""
-            INSERT INTO TIMETABLE_MONTHLY (job_id, series_id, timetable_id, exclude_ph, day_of_month, month, run_time, no_run)
+            INSERT INTO TIMETABLE_MONTHLY (job_id, series_id, timetable_id, exclude_ph, day_of_month, month, run_time, run_option)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """, (record['job_id'], record['series_id'], record['timetable_id'],
               record['exclude_ph'], record['day_of_month'], record['month'],
-              record['run_time'], record['no_run']))
+              record['run_time'], record['run_option']))
 
 if __name__ == "__main__":
     populate_data()
