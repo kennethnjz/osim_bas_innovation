@@ -59,6 +59,18 @@ def create_database():
         )
         ''')
 
+        # Timetable table
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS TIMETABLE_DATETIME (
+            series_id TEXT,
+            job_id TEXT,
+            start_run_datetime TEXT,
+            end_run_datetime TEXT,
+            dependent_job_id TEXT,
+			PRIMARY KEY (series_id, job_id, start_run_datetime)
+        )
+        ''')
+
         # Job table
         cursor.execute('''
         CREATE TABLE IF NOT EXISTS JOB (
