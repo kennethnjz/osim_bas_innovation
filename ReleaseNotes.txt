@@ -1,11 +1,21 @@
 Release Notes
 =============
+Date:   27/08/2025
+Name:   Kenneth Ng
+Release:
+1. Updated Timetable DB to add TIMETABLE_DATETIME table
+2. Updated DB Setup script to add TIMETABLE_DATETIME table creation
+
+Changes:
+db_setup.py
+timetable.db
+
+=============
 Date:   02/08/2025
 Name:   Jeremy
 Release:
 1. Updated export functionality to match import template column order and headers
 
-Release Notes
 =============
 Date:   23/07/2025
 Name:   Kenneth Ng

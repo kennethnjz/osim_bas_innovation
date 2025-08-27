@@ -11,6 +11,8 @@ import numpy as np
 from sqlalchemy.types import *
 import os, sys
 
+import db_setup
+
 import timetable_daily
 import timetable_dependency
 import timetable_weekly
@@ -22,6 +24,8 @@ import sqlite3
 import pandas as pd
 
 import schedule_template_validation
+import populate_db_from_schedule
+import public_holiday
 
 # def challenge():
 #     conn = sqlite3.connect(r'files/timetable.db')
@@ -180,6 +184,9 @@ def import_function():
         conn.close()
         print("Data successfully loaded from Excel to SQLite!")
 
+        # Populate other database tables from OPERATING_SCHEDULE
+        populate_db_from_schedule.populate_data()
+
         messagebox.showinfo('Schedule Import Successful', 'Schedule has been successfully imported')
 
     except Exception as e:
@@ -259,6 +266,32 @@ def export_schedule():
         messagebox.showinfo('Export Successful', f'Data exported to {export_file}')
     except Exception as e:
         messagebox.showerror('Export Failed', f'An error occurred: {e}')
+
+def import_public_holiday_function():
+    filename = filedialog.askopenfilename(initialdir = "/",
+                                          title = "Select the Public Holiday File",
+                                          filetypes = (("Excel Files",
+                                                        "*.xlsx*"),
+                                                       ("CSV Files",
+                                                        "*.csv*")))
+
+    if not filename:
+        return
+
+    file_type = Path(filename).suffix
+    print("File Type: " + file_type)
+
+    try:
+        success, message = public_holiday.import_public_holiday(file_type, filename)
+
+        if success:
+            messagebox.showinfo('Public Holiday Import Successful', message)
+        else:
+            messagebox.showerror('Public Holiday Import Failed', message)
+
+    except Exception as e:
+        messagebox.showerror('Import Failed', f'An error occurred: {e}')
+        print(f"An error occurred: {e}")
 
  # Export OM
 def export_om():
@@ -432,5 +465,17 @@ tk.Button(
     padx=30,
     command=generate_timetable
 ).pack(pady=10)
+
+# Add spacer
+tk.Label(m, text="", height=1).pack()  # Empty label as spacer
+
+# Import Public Holiday button (smaller size)
+tk.Button(
+    m,
+    text='Import Public Holiday',
+    font=('Consolas', 8),  # Smaller font size
+    padx=20,  # Smaller padding
+    command=import_public_holiday_function
+).pack(pady=5)  # Smaller vertical padding
 
 m.mainloop()
