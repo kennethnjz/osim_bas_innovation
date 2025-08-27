@@ -260,6 +260,49 @@ def export_schedule():
     except Exception as e:
         messagebox.showerror('Export Failed', f'An error occurred: {e}')
 
+ # Export OM
+def export_om():
+    try:
+        conn = sqlite3.connect(r'files/timetable.db')
+        col_names = [
+            "srs_function",
+            "series_title",
+            "job_frequency",
+            "job_id",
+            "run_mode",
+            "est_run_time",
+            "est_trx_vol",
+            #Scehdule instructions?
+            "start_time",
+            "dependent_job_id",
+            "minutes_dependent_job_id",
+            #Scehdule instructions?
+            "job_desc",
+            "priority_level",
+            "server_name",
+            "script",
+            "start_run_date",
+            "end_run_date",
+            "remarks"
+        ]
+        query = f"SELECT {', '.join(col_names)} FROM OPERATING_SCHEDULE"
+        df = pd.read_sql_query(query, conn)
+        conn.close()
+        if df.empty:
+            messagebox.showwarning('No Data', 'No data found in OPERATING_SCHEDULE!')
+            return
+        filetypes = [('Excel Files', '*.xlsx'), ('CSV Files', '*.csv')]
+        export_file = filedialog.asksaveasfilename(defaultextension='.xlsx', filetypes=filetypes, title='Export Lite As')
+        if not export_file:
+            return
+        if export_file.endswith('.csv'):
+            df.to_csv(export_file, index=False)
+        else:
+            df.to_excel(export_file, index=False)
+        messagebox.showinfo('Export Successful', f'Data exported to {export_file}')
+    except Exception as e:
+        messagebox.showerror('Export Failed', f'An error occurred: {e}')
+
 m = tk.Tk()
 
 m.geometry('450x500')
@@ -362,12 +405,23 @@ tk.Button(
 ).pack(pady=10)
 
 # Export button
+
+# Export button (full)
 tk.Button(
     m,
     text='Export Schedule',
     font=('Consolas', 12, 'bold'),
     padx=30,
     command=export_schedule
+).pack(pady=10)
+
+# Export button (OM)
+tk.Button(
+    m,
+    text='Export OM',
+    font=('Consolas', 12, 'bold'),
+    padx=30,
+    command=export_om
 ).pack(pady=10)
 
 # Generate Timetable button
