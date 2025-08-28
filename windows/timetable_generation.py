@@ -89,9 +89,9 @@ def initiateTimetableDs(df, today_str, future_str):
     for idx, row in df_root_jobs.iterrows():
         if int(row['start_run_date']) <= int(future_str) and int(row['end_run_date']) >= int(today_str):
             if int(row['start_run_date']) <= int(today_str):
-                df_root_jobs.at[idx,'start_run_date_time'] = today_str+"0000"
+                df_root_jobs.at[idx,'start_run_date_time'] = today_str + row['start_time']
             elif int(row['start_run_date']) > int(today_str):
-                df_root_jobs.at[idx,'start_run_date_time'] = row['start_run_date']+"0000"
+                df_root_jobs.at[idx,'start_run_date_time'] = row['start_run_date'] + row['start_time']
 
             # Parse start_run_date_time, assuming format YYYYMMDDHHMM
             start_dt = datetime.strptime(df_root_jobs.loc[idx,'start_run_date_time'], "%Y%m%d%H%M")
@@ -110,6 +110,7 @@ def initiateTimetableDs(df, today_str, future_str):
     while not df_non_root_jobs.empty:
         # Track if any job was processed in this pass
         processed_any = False
+        indices_to_drop = []
 
         for idx, row in df_non_root_jobs.iterrows():
             # Check if dependency is in root jobs
@@ -138,11 +139,13 @@ def initiateTimetableDs(df, today_str, future_str):
                 # Append to df_root_jobs
                 df_root_jobs = pd.concat([df_root_jobs, df_non_root_jobs.loc[[idx]]], ignore_index=True)
 
-                # Drop from non-root jobs
-                df_non_root_jobs = df_non_root_jobs.drop(idx)
+                indices_to_drop.append(idx)
 
                 processed_any = True
                 break  # break to restart the loop with the updated root jobs
+
+        if indices_to_drop:
+            df_non_root_jobs = df_non_root_jobs.drop(indices_to_drop)
 
         if not processed_any:
             raise Exception("Unresolvable dependencies detected — some jobs refer to missing or circular dependencies.")
@@ -172,6 +175,7 @@ def initiateTimetableDs(df, today_str, future_str):
     return result
 
 def expand_schedule(df_timetable, today_str, future_str):
+
     df_expanded_timetable = df_timetable.copy()
     unique_series_ids = df_timetable['series_id'].unique().tolist()
 
@@ -227,9 +231,17 @@ def generate_timetable():
         return
 
     df_timetable = initiateTimetableDs(df, today_str, future_str)
+    print(df_timetable.columns)
     df_timetable = expand_schedule(df_timetable, today_str, future_str)
-    print(df_timetable)
 
+    columns_to_keep = [
+        'series_id',
+        'job_id',
+        'start_run_date_time',
+        'end_run_date_time',
+        'dependent_job_id'
+    ]
+    df_timetable = df_timetable[columns_to_keep]
     df_timetable.to_sql('TIMETABLE_DATETIME', conn, if_exists='append', index=False)
 
 

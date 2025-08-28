@@ -15,7 +15,7 @@ import db_setup
 
 import timetable_daily
 import timetable_dependency
-import timetable_weekly
+import timetable_generation
 
 sys.path.insert(0, 'windows/')
 import timetable_stud
@@ -199,14 +199,14 @@ def generate_timetable():
     cursor = conn.cursor()
 
     try:
-        cursor.execute(f"DELETE FROM TIMETABLE")
+        cursor.execute(f"DELETE FROM TIMETABLE_DATETIME")
 
         conn.commit()  # Commit the transaction
         print(f"Table TIMETABLE truncated successfully.")
 
-        timetable_daily.generate_daily_timetable()
-        timetable_weekly.generate_weekly_timetable()
-        timetable_dependency.generate_dependency_timetable()
+        #timetable_daily.generate_daily_timetable()
+        timetable_generation.generate_timetable()
+        #timetable_dependency.generate_dependency_timetable()
 
         messagebox.showinfo('Timetable Generation Successful', 'Timetable has been generated')
     except sqlite3.Error as e:
