@@ -22,215 +22,214 @@ def parse_days_of_week(s):
         return []
     return [int(x) for x in s.split(';')]
 
-def expand_root_jobs(df, date_range):
-    expanded_jobs = []
+def initiateTimetableDs(df, today_str, future_str):
+    # Define the columns
+    columns = [
+        'job_id', 'start_run_date_time', 'series_id', 'start_time', 'dependent_job_id',
+        'end_run_date_time', 'start_run_date', 'end_run_date', 'est_run_time',
+        'minutes_dependent_job_id', 'days_of_week_list', 'root_job'
+    ]
 
+    # Create an empty DataFrame with the specified columns
+    df_timetable = pd.DataFrame(columns=columns)
+
+    #expand dependency job
     for idx, row in df.iterrows():
-        if pd.isna(row['dependent_job_id']):  # root job
-            if int(row['end_run_date']) <= int(datetime.today().strftime('%Y%m%d')):
-                continue
+        depJobIds = []
+        if not pd.isna(row['dependent_job_id']):
+            depJobIds = [job.strip() for job in row['dependent_job_id'].split(',') if job.strip() != '']
 
-            valid_days = row['days_of_week_list']
-            run_dates = [d for d in date_range if (not valid_days or d.isoweekday() in valid_days)]
+        # root job
+        if not depJobIds:
+            new_row = {
+                'job_id': row['job_id'],
+                'series_id': row['series_id'],
+                'start_run_date_time': None,
+                'end_run_date_time': None,
+                'start_time': row['start_time'],
+                'dependent_job_id': row['job_id'],
+                'start_run_date': row['start_run_date'],
+                'end_run_date': row['end_run_date'] if pd.notna(row['end_run_date']) else '99999999',
+                'est_run_time': row['est_run_time'],
+                'minutes_dependent_job_id': row['minutes_dependent_job_id'],
+                'days_of_week_list': parse_days_of_week(row['days_of_week']),
+                'root_job': 1
+            }
+        else:
+            for dep_id in depJobIds:
+                new_row = {
+                    'job_id': row['job_id'],
+                    'series_id': row['series_id'],
+                    'start_run_date_time': None,
+                    'end_run_date_time': None,
+                    'start_time': None,
+                    'dependent_job_id': dep_id,
+                    'start_run_date': row['start_run_date'],
+                    'end_run_date': row['end_run_date'],
+                    'est_run_time': row['est_run_time'],
+                    'minutes_dependent_job_id': row['minutes_dependent_job_id'],
+                    'days_of_week_list': None,
+                    'root_job': 0
+                }
 
-            for run_date in run_dates:
-                chain = [row.copy()]
-                chain[0]['run_date'] = run_date
-                chain[0]['end_time'] = chain[0]['start_time'] + chain[0]['est_run_time']
-                expanded_jobs.append(chain[0])
+        df_timetable.loc[len(df_timetable)] = new_row
 
-                # Now follow the dependency chain
-                current_job_id = row['job_id']
-                while True:
-                    child_jobs = df[df['dependent_job_id'] == current_job_id]
-                    if child_jobs.empty:
-                        break
-                    child = child_jobs.iloc[0].copy()
-                    child['run_date'] = None  # will be filled later
-                    chain.append(child)
-                    current_job_id = child['job_id']
-                    expanded_jobs.append(child)
+    root_row = None
 
-    expanded_df = pd.DataFrame(expanded_jobs).reset_index(drop=True)
-    return expanded_df
+    # Keep only rows where dependent_job_id is either:
+    # - NaN (no dependency), or
+    # - Present in job_id column
+    filtered_df = df_timetable[
+        df_timetable['dependent_job_id'].isna() |  # Keep rows where dependent_job_id is NaN
+        df_timetable['dependent_job_id'].isin(df_timetable['job_id'])  # OR is in job_id list
+        ]
 
-def fill_schedule_24h(df, date_range):
-    # Fill start_time and end_time based on dependencies
-    while df['start_time'].isna().any() or df['end_time'].isna().any():
-        changes = False
-        for idx, row in df.iterrows():
-            if pd.isna(row['start_time']):
-                dep_job_id = row['dependent_job_id']
-                if pd.notna(dep_job_id):
-                    dep_row = df[df['job_id'] == dep_job_id]
-                    if dep_row.empty:
-                        continue
-                    dep_end = dep_row['end_time'].values[0]
+    df_root_jobs = filtered_df[filtered_df['root_job'] == 1]
 
-                    if pd.isna(dep_end):
-                        continue
-                    # Calculate start_time = dependent end_time + minutes_dependent_job_id
-                    start = dep_end + row['minutes_dependent_job_id']
-                    df.at[idx, 'start_time'] = start
-                    df.at[idx, 'end_time'] = start + row['est_run_time']
-                    changes = True
-            else:
-                if pd.isna(row['end_time']):
-                    df.at[idx, 'end_time'] = row['start_time'] + row['est_run_time']
-                    changes = True
-        if not changes:
-            break
+    for idx, row in df_root_jobs.iterrows():
+        if int(row['start_run_date']) <= int(future_str) and int(row['end_run_date']) >= int(today_str):
+            if int(row['start_run_date']) <= int(today_str):
+                df_root_jobs.at[idx,'start_run_date_time'] = today_str+"0000"
+            elif int(row['start_run_date']) > int(today_str):
+                df_root_jobs.at[idx,'start_run_date_time'] = row['start_run_date']+"0000"
 
-    # Assign run_date for root jobs (no dependency) based on allowed weekdays
-    for idx, row in df.iterrows():
-        if pd.isna(row['run_date']) and pd.isna(row['dependent_job_id']):
-            valid_days = row['days_of_week_list']
-            if not valid_days:  # empty list or NaN
-                df.at[idx, 'run_date'] = date_range[0]
-            else:
-                for d in date_range:
-                    if d.isoweekday() in valid_days:  # Monday=1 ... Sunday=7
-                        df.at[idx, 'run_date'] = d
-                        break
+            # Parse start_run_date_time, assuming format YYYYMMDDHHMM
+            start_dt = datetime.strptime(df_root_jobs.loc[idx,'start_run_date_time'], "%Y%m%d%H%M")
 
-    dependent_run_date = ''
-    # Assign run_date for dependent jobs considering 24h rollover
-    while df['run_date'].isna().any():
-        changes = False
-        for idx, row in df.iterrows():
-            if pd.isna(row['run_date']):
-                dep_job_id = row['dependent_job_id']
-                if pd.notna(dep_job_id):
-                    # dep_row = df[df['job_id'] == dep_job_id]
-                    # if dep_row.empty or pd.isna(dep_row.iloc[0]['run_date']):
-                    #     continue
-                    parent_job_row = get_parent_job_row(df, dep_job_id, dependent_run_date)
-                    if parent_job_row is None or pd.isna(parent_job_row['run_date']):
-                        continue
-                    # dep_run_date = dep_row.iloc[0]['run_date']
-                    # dep_end_time = dep_row.iloc[0]['end_time']
-                    dep_run_date = parent_job_row['run_date']
-                    dep_end_time = parent_job_row['end_time']
+            delta = timedelta(minutes=int(row['est_run_time']))
 
-                    # Calculate day offset for dependent job end_time and current job start_time
-                    dep_day_offset = dep_end_time // 2400
-                    dep_time_of_day = dep_end_time % 2400
+            # Add est_run_time to start_dt
+            end_dt = start_dt + delta
 
-                    start_day_offset = row['start_time'] // 2400
-                    start_time_of_day = row['start_time'] % 2400
+            # Format back if needed (same format as start)
+            df_root_jobs.at[idx,'end_run_date_time'] = end_dt.strftime("%Y%m%d%H%M")
 
-                    # If job starts before dependent job ends on the same run_date day, add an extra day
-                    if (start_day_offset < dep_day_offset) or (start_day_offset == dep_day_offset and start_time_of_day < dep_time_of_day):
-                        start_day_offset = dep_day_offset
-                        if start_time_of_day < dep_time_of_day:
-                            start_day_offset += 1
+    df_non_root_jobs = filtered_df[filtered_df['root_job'] == 0]
 
-                    # Calculate run_date index after adding day offset
-                    dep_date_idx = date_range.index(dep_run_date)
-                    new_date_idx = dep_date_idx + start_day_offset
-                    if new_date_idx >= len(date_range):
-                        new_date_idx = len(date_range) - 1
-                    run_date = date_range[int(new_date_idx)]
+    # Loop until all non-root jobs are processed
+    while not df_non_root_jobs.empty:
+        # Track if any job was processed in this pass
+        processed_any = False
 
-                    df.at[idx, 'run_date'] = run_date
-                    changes = True
-            else:
-                dependent_run_date = row['run_date']
-        if not changes:
-            break
+        for idx, row in df_non_root_jobs.iterrows():
+            # Check if dependency is in root jobs
+            match = df_root_jobs[df_root_jobs['job_id'] == row['dependent_job_id']]
 
-    # Normalize start_time and end_time to 24-hour format (0000 to 2359)
-    def normalize_time(t):
-        t = t % 2400
-        # Fix times like 2360 or 2399 which are invalid minutes representation
-        hour = t // 100
-        minute = t % 100
-        if minute >= 60:
-            hour += 1
-            minute -= 60
-        return hour * 100 + minute
+            if not match.empty:
+                # We can now process this job
+                root_row = match.iloc[0]
 
-    for idx, row in df.iterrows():
-        df.at[idx, 'start_time'] = normalize_time(row['start_time'])
-        df.at[idx, 'end_time'] = normalize_time(row['end_time'])
+                df_non_root_jobs.at[idx, 'days_of_week_list'] = root_row['days_of_week_list']
 
-    return df
+                # Set start_run_date_time from dependent job's end_run_date_time
+                df_non_root_jobs.at[idx, 'start_run_date_time'] = root_row['end_run_date_time']
 
-def get_parent_job_row(df, dep_job_id, dependent_run_date):
-    # Get all parent rows with job_id == dep_job_id
-    parent_rows = df[df['job_id'] == dep_job_id].sort_values('run_date')
-    if dependent_run_date is not None and not pd.isna(dependent_run_date):
-        # Try to find exact matching run_date first
-        match = parent_rows[parent_rows['run_date'] == dependent_run_date]
-        if not match.empty:
-            return match.iloc[0]
-        # Otherwise find latest parent run_date before dependent run_date
-        before = parent_rows[parent_rows['run_date'] < dependent_run_date]
-        if not before.empty:
-            return before.iloc[-1]
-    # fallback to last parent row if no better match
-    if not parent_rows.empty:
-        return parent_rows.iloc[-1]
-    return None
+                # Parse date
+                start_dt = datetime.strptime(root_row['end_run_date_time'], "%Y%m%d%H%M")
 
+                # Add durations
+                delta1 = timedelta(minutes=int(row['est_run_time']))
+                delta2 = timedelta(minutes=int(row['minutes_dependent_job_id']))
+                end_dt = start_dt + delta1 + delta2
 
-def generate_weekly_timetable():
-    today_str = datetime.today().strftime('%Y%m%d')
+                # Update in df_non_root_jobs
+                df_non_root_jobs.at[idx, 'end_run_date_time'] = end_dt.strftime("%Y%m%d%H%M")
+
+                # Append to df_root_jobs
+                df_root_jobs = pd.concat([df_root_jobs, df_non_root_jobs.loc[[idx]]], ignore_index=True)
+
+                # Drop from non-root jobs
+                df_non_root_jobs = df_non_root_jobs.drop(idx)
+
+                processed_any = True
+                break  # break to restart the loop with the updated root jobs
+
+        if not processed_any:
+            raise Exception("Unresolvable dependencies detected — some jobs refer to missing or circular dependencies.")
+
+    # Replace matching dependent_job_id with empty string
+    df_root_jobs['dependent_job_id'] = df_root_jobs.apply(
+        lambda row: '' if row['job_id'] == row['dependent_job_id'] else row['dependent_job_id'],
+        axis=1
+    )
+
+    agg_df = df_root_jobs.groupby('job_id').agg({
+        'dependent_job_id': lambda x: ','.join(sorted(set(filter(None, x)))),
+        'end_run_date_time': 'max'
+    }).reset_index()
+
+    # Drop duplicates to get one row per job_id (you can choose how)
+    base_df = df_root_jobs.drop_duplicates(subset=['job_id'])
+
+    # Merge aggregated data back to base
+    result = pd.merge(base_df, agg_df, on='job_id', suffixes=('', '_agg'))
+
+    # Replace original columns with aggregated ones
+    result['dependent_job_id'] = result['dependent_job_id_agg']
+    result['end_run_date_time'] = result['end_run_date_time_agg']
+    result = result.drop(columns=['dependent_job_id_agg', 'end_run_date_time_agg'])
+
+    return result
+
+def expand_schedule(df_timetable, today_str, future_str):
+    df_expanded_timetable = df_timetable.copy()
+    unique_series_ids = df_timetable['series_id'].unique().tolist()
+
+    for id in unique_series_ids:
+        filtered_df = df_timetable[df_timetable['series_id'] == id]
+        filtered_df = filtered_df.sort_values(by='root_job', ascending=False).reset_index(drop=True)
+
+        startDate = int(filtered_df.loc[0]['start_run_date_time'][:8])
+        endDate = int(filtered_df.loc[0]['end_run_date_time'][:8])
+        startdate_obj = datetime.strptime(filtered_df.loc[0]['start_run_date_time'][:8], "%Y%m%d").date()
+        enddate_obj = datetime.strptime(filtered_df.loc[0]['end_run_date_time'][:8], "%Y%m%d").date()
+
+        while startDate < int(future_str):
+            startdate_obj = startdate_obj + timedelta(days=1)
+            enddate_obj = enddate_obj + timedelta(days=1)
+
+            startDate = int(startdate_obj.strftime("%Y%m%d"))
+
+            expanded_rows = []
+
+            for idx, row in filtered_df.iterrows():
+                new_row = row.to_dict()
+
+                new_row['start_run_date_time'] =  startdate_obj.strftime("%Y%m%d") + row['start_run_date_time'][8:]
+                new_row['end_run_date_time'] =  enddate_obj.strftime("%Y%m%d") + row['end_run_date_time'][8:]
+
+                day_of_week = startdate_obj.isoweekday()
+                days_str = row['days_of_week_list']
+
+                if not row['days_of_week_list']:
+                    if day_of_week in row['days_of_week_list']:
+                        expanded_rows.append(new_row)
+                else:
+                    expanded_rows.append(new_row)
+
+            df_expanded_timetable = pd.concat([df_expanded_timetable, pd.DataFrame(expanded_rows)], ignore_index=True)
+
+    return df_expanded_timetable
+
+def generate_timetable():
+    numberOfDays = 14
+    today = datetime.today().date()
+    today_str = today.strftime('%Y%m%d')
+    future_date = today + timedelta(days=numberOfDays)
+    future_str = future_date.strftime('%Y%m%d')
+
     conn = sqlite3.connect(r'files/timetable.db')
-    df = pd.read_sql_query("SELECT * FROM OPERATING_SCHEDULE WHERE job_id like '___W%' AND start_run_date <= '{today_str}'", conn)
+    df = pd.read_sql_query("SELECT * FROM OPERATING_SCHEDULE", conn)
 
     if df.empty:
         messagebox.showwarning('No Data', 'No data found in OPERATING_SCHEDULE!')
         conn.close()
         return
 
-    # Define the columns
-    columns = ['job_id', 'run_date', 'series_id', 'start_time', 'dependent_job_id', 'end_time']
+    df_timetable = initiateTimetableDs(df, today_str, future_str)
+    df_timetable = expand_schedule(df_timetable, today_str, future_str)
+    print(df_timetable)
 
-    # Create an empty DataFrame with the specified columns
-    df_timetable = pd.DataFrame(columns=columns)
-    df_timetable['job_id'] = df['job_id']
-    df_timetable['series_id'] = df['series_id']
-    df_timetable['dependent_job_id'] = df['dependent_job_id']
-    # df_timetable['start_time'] = pd.to_numeric(df['start_time'], errors='coerce').fillna(0).astype(int)
-    # Convert safely
-    df_timetable['start_time'] = pd.to_numeric(df['start_time'], errors='coerce')
-    # df_timetable['end_time'] = pd.to_numeric(df['end_time'], errors='coerce')
-    df_timetable['est_run_time'] = pd.to_numeric(df['est_run_time'], errors='coerce').fillna(0).astype(int)
-    df_timetable['minutes_dependent_job_id'] = pd.to_numeric(df['minutes_dependent_job_id'], errors='coerce').fillna(0).astype(int)
-    df_timetable['end_run_date'] = pd.to_numeric(df['end_run_date'], errors='coerce').fillna(99999999).astype(int)
-    df_timetable['days_of_week'] = df['days_of_week']
-    df_timetable['days_of_week_list'] = df_timetable['days_of_week'].apply(parse_days_of_week)
-    today = datetime.today().date()
-    date_range = [today + timedelta(days=i) for i in range(14)]
-
-    df_timetable['days_of_week_list'] = df_timetable['days_of_week'].fillna('').apply(lambda x: [int(d) for d in x.split(';') if d.strip().isdigit()])
-    df_expanded = expand_root_jobs(df_timetable, date_range)
-
-    df_filled = fill_schedule_24h(df_expanded,date_range)
-    df_filled = df_filled[columns].copy()
-    # Apply conversion to start_time and end_time
-    df_filled['start_time'] = df_filled['start_time'].apply(hhmm_to_str)
-    df_filled['end_time'] = df_filled['end_time'].apply(hhmm_to_str)
-
-    # Convert run_date to YYYYMMDD format as integer
-    df_filled['run_date'] = pd.to_datetime(df_filled['run_date'], errors='coerce')
-    df_filled['run_date'] = df_filled['run_date'].dt.strftime('%Y%m%d').astype(int)
-
-
-    print('------------------------------')
-    print(df_filled)
-
-    df_filled.to_sql('TIMETABLE', conn, if_exists='append', index=False)
-    conn.close()
-
-# Function to convert HHMM integer to HH:MM string
-def hhmm_to_str(time_val):
-    if pd.isna(time_val):
-        return ''
-    time_val = int(time_val)
-    hour = time_val // 100
-    minute = time_val % 100
-    return f"{hour:02d}{minute:02d}"
+    df_timetable.to_sql('TIMETABLE_DATETIME', conn, if_exists='append', index=False)
 
 
