@@ -413,13 +413,13 @@ tk.Button(
 ).pack(pady=10)
 
 # Add spacer
-tk.Label(m, text="", height=1).pack()  # Empty label as spacer
+tk.Label(m, text="", height=2).pack()  # Empty label as spacer
 
 # Import Public Holiday button (smaller size)
 tk.Button(
     m,
     text='Import Public Holiday',
-    font=('Consolas', 8),  # Smaller font size
+    font=('Consolas', 10, 'bold'),  # Smaller font size
     padx=20,  # Smaller padding
     command=import_public_holiday_function
 ).pack(pady=5)  # Smaller vertical padding
