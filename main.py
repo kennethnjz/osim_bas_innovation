@@ -15,7 +15,7 @@ import db_setup
 
 import timetable_daily
 import timetable_dependency
-import timetable_weekly
+import timetable_generation
 
 sys.path.insert(0, 'windows/')
 import timetable_stud
@@ -199,14 +199,14 @@ def generate_timetable():
     cursor = conn.cursor()
 
     try:
-        cursor.execute(f"DELETE FROM TIMETABLE")
+        cursor.execute(f"DELETE FROM TIMETABLE_DATETIME")
 
         conn.commit()  # Commit the transaction
         print(f"Table TIMETABLE truncated successfully.")
 
-        timetable_daily.generate_daily_timetable()
-        timetable_weekly.generate_weekly_timetable()
-        timetable_dependency.generate_dependency_timetable()
+        #timetable_daily.generate_daily_timetable()
+        timetable_generation.generate_timetable()
+        #timetable_dependency.generate_dependency_timetable()
 
         messagebox.showinfo('Timetable Generation Successful', 'Timetable has been generated')
     except sqlite3.Error as e:
@@ -467,13 +467,13 @@ tk.Button(
 ).pack(pady=10)
 
 # Add spacer
-tk.Label(m, text="", height=1).pack()  # Empty label as spacer
+tk.Label(m, text="", height=2).pack()  # Empty label as spacer
 
 # Import Public Holiday button (smaller size)
 tk.Button(
     m,
     text='Import Public Holiday',
-    font=('Consolas', 8),  # Smaller font size
+    font=('Consolas', 10, 'bold'),  # Smaller font size
     padx=20,  # Smaller padding
     command=import_public_holiday_function
 ).pack(pady=5)  # Smaller vertical padding
