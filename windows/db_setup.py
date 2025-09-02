@@ -90,6 +90,7 @@ def create_database():
             first_run_date TEXT,
             suspended_date TEXT,
             last_run_date TEXT,
+            exclude_ph TEXT,
             remarks TEXT
         )
         ''')
@@ -110,7 +111,6 @@ def create_database():
         cursor.execute('''
         CREATE TABLE IF NOT EXISTS SRS (
             srs_id TEXT PRIMARY KEY,
-            system_code TEXT,
             srs_title TEXT,
             srs_filename TEXT
         )
@@ -119,21 +119,23 @@ def create_database():
         # SRS Function table
         cursor.execute('''
         CREATE TABLE IF NOT EXISTS SRS_FUNCTION (
-            srs_function_no TEXT PRIMARY KEY,
             system_code TEXT,
-            srs_function_title TEXT
+            srs_function_no TEXT,
+            srs_function_title TEXT,
+            PRIMARY KEY (system_code, srs_function_no)
         )
         ''')
 
         # Run Series table
         cursor.execute('''
         CREATE TABLE IF NOT EXISTS RUN_SERIES (
-            series_id TEXT PRIMARY KEY,
             system_code TEXT,
+            series_id TEXT,
             frequency TEXT,
             series_sequence_1 TEXT,
             series_sequence_2 TEXT,
-            series_title TEXT
+            series_title TEXT,
+            PRIMARY KEY (system_code, series_id)
         )
         ''')
 
@@ -141,7 +143,6 @@ def create_database():
         cursor.execute('''
         CREATE TABLE IF NOT EXISTS RUNCHART (
             runchart_id TEXT PRIMARY KEY,
-            system_code TEXT,
             runchart_filename TEXT
         )
         ''')
@@ -201,7 +202,6 @@ def create_database():
             job_id TEXT,
             series_id TEXT,
             timetable_id TEXT,
-            exclude_ph TEXT,
             run_time TEXT,
 			run_option TEXT,
             days_of_week TEXT,
@@ -215,7 +215,6 @@ def create_database():
             job_id TEXT,
             series_id TEXT,
             timetable_id TEXT,
-            exclude_ph TEXT,
             run_time TEXT,
 			run_option TEXT,
             days_of_week TEXT,
@@ -229,7 +228,6 @@ def create_database():
             job_id TEXT,
             series_id TEXT,
             timetable_id TEXT,
-            exclude_ph TEXT,
             run_time TEXT,
 			run_option TEXT,
             day_of_month TEXT,
@@ -268,11 +266,9 @@ def create_database():
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_JOB_runchart_id ON JOB(runchart_id)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_JOB_server_id ON JOB(server_id)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_JOB_script_id ON JOB(script_id)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_JOB_script_id ON JOB(exclude_ph)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_JOB_SRS_MAPPING_system_code ON JOB_SRS_MAPPING(system_code)')
-        cursor.execute('CREATE INDEX IF NOT EXISTS idx_SRS_system_code ON SRS(system_code)')
-        cursor.execute('CREATE INDEX IF NOT EXISTS idx_SRS_FUNCTION_system_code ON SRS_FUNCTION(system_code)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_RUN_SERIES_system_code_frequency ON RUN_SERIES(system_code, frequency)')
-        cursor.execute('CREATE INDEX IF NOT EXISTS idx_RUNCHART_system_code ON RUNCHART(system_code)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_TIMETABLE_DAILY_series_id ON TIMETABLE_DAILY(series_id)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_TIMETABLE_WEEKLY_series_id ON TIMETABLE_WEEKLY(series_id)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_TIMETABLE_MONTHLY_series_id ON TIMETABLE_MONTHLY(series_id)')
