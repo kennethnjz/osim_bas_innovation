@@ -17,6 +17,8 @@ import sqlite3
 import pandas as pd
 from datetime import datetime, timedelta
 
+import timetable_exclude_ph
+
 def parse_days_of_week(s):
     if pd.isna(s):
         return []
@@ -260,4 +262,13 @@ def generate_timetable():
     df_timetable.to_excel('output.xlsx', index=False)
     df_timetable.to_sql('TIMETABLE_DATETIME', conn, if_exists='append', index=False)
 
-
+    # Apply public holiday exclusions with the same numberOfDays
+    try:
+        print("\n" + "="*60)
+        print("APPLYING PUBLIC HOLIDAY EXCLUSIONS")
+        print("="*60)
+        timetable_exclude_ph.exclude_public_holidays(numberOfDays)
+        print("Public holiday exclusions completed successfully")
+    except Exception as e:
+        print(f"Error during public holiday exclusion: {e}")
+        # Don't re-raise here as the main timetable generation was successful
