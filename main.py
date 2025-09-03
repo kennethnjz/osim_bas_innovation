@@ -297,7 +297,80 @@ def import_public_holiday_function():
 def export_om():
     try:
         conn = sqlite3.connect(r'files/timetable.db')
-        col_names = [
+        # Define all columns you want to select and export
+        db_cols = [
+            "srs_function",
+            "series_id",
+            "series_title",
+            "job_id",
+            "job_desc",
+            "remarks",
+            "start_run_date",
+            "end_run_date",
+            "run_mode",
+            "est_trx_vol",
+            "est_run_time",
+            "priority_level",
+            "server_name",
+            "script",
+            "os_option",
+            "schedule_type",
+            "month",
+            "week_no",
+            "day_no",
+            "yearly_run_date",
+            "days_of_week",
+            "exclude_public_holidays",
+            "start_time",
+            "dependent_job_id",
+            "minutes_dependent_job_id",
+            "job_frequency" # Add this if you expect it in export
+        ]
+        # Only select columns that exist in the DB
+        query_cols = [col for col in db_cols if col != "job_frequency"]
+        query = f"SELECT {', '.join(query_cols)} FROM OPERATING_SCHEDULE"
+        df = pd.read_sql_query(query, conn)
+        conn.close()
+        if df.empty:
+            messagebox.showwarning('No Data', 'No data found in OPERATING_SCHEDULE!')
+            return
+
+        # Add job_frequency as blank if not present
+        if "job_frequency" not in df.columns:
+            df["job_frequency"] = ""
+
+        # Add scheduling_instructions column
+        def make_instruction(row):
+            job_id = row.get('job_id', '')
+            days_of_week = row.get('days_of_week', '')
+            start_time = row.get('start_time', '')
+            dependentjob = row.get('dependent_job_id', '')
+            try:
+                mins = int(row.get('minutes_dependent_job_id', 0) or 0)
+            except Exception:
+                mins = 0
+            # Handle exclude_public_holidays conversion
+            excludepublicholidays = row.get('exclude_public_holidays', False)
+            if isinstance(excludepublicholidays, str):
+                excludepublicholidays = excludepublicholidays.lower() in ("true", "1", "yes")
+            elif isinstance(excludepublicholidays, (int, float)):
+                excludepublicholidays = bool(excludepublicholidays)
+
+            # Construct instruction string
+            instr = f"Job {job_id} runs {days_of_week}. \nRun at {start_time}."
+            if dependentjob:
+                if mins == 0:
+                    instr += f" \nRun immediately after completion of {dependentjob}."
+                else:
+                    min_text = "min" if mins == 1 else "mins"
+                    instr += f" \nRun {mins} {min_text} after completion of {dependentjob}."
+            if excludepublicholidays:
+                instr += "\nExclude public holidays."
+            return instr
+        df['scheduling_instructions'] = df.apply(make_instruction, axis=1)
+
+        # Export columns
+        export_cols = [
             "srs_function",
             "series_title",
             "job_frequency",
@@ -305,12 +378,7 @@ def export_om():
             "run_mode",
             "est_run_time",
             "est_trx_vol",
-            #Scehdule instructions?
-            "start_time",
-            "dependent_job_id",
-            "minutes_dependent_job_id",
-            #Scehdule instructions?
-            "job_desc",
+            "scheduling_instructions",
             "priority_level",
             "server_name",
             "script",
@@ -318,20 +386,18 @@ def export_om():
             "end_run_date",
             "remarks"
         ]
-        query = f"SELECT {', '.join(col_names)} FROM OPERATING_SCHEDULE"
-        df = pd.read_sql_query(query, conn)
-        conn.close()
-        if df.empty:
-            messagebox.showwarning('No Data', 'No data found in OPERATING_SCHEDULE!')
-            return
+
+        # Only export columns that exist in the DataFrame
+        export_cols = [col for col in export_cols if col in df.columns]
+
         filetypes = [('Excel Files', '*.xlsx'), ('CSV Files', '*.csv')]
-        export_file = filedialog.asksaveasfilename(defaultextension='.xlsx', filetypes=filetypes, title='Export Lite As')
+        export_file = filedialog.asksaveasfilename(defaultextension='.xlsx', filetypes=filetypes, title='Export Operating Schedule As')
         if not export_file:
             return
         if export_file.endswith('.csv'):
-            df.to_csv(export_file, index=False)
+            df.to_csv(export_file, index=False, columns=export_cols)
         else:
-            df.to_excel(export_file, index=False)
+            df.to_excel(export_file, index=False, columns=export_cols)
         messagebox.showinfo('Export Successful', f'Data exported to {export_file}')
     except Exception as e:
         messagebox.showerror('Export Failed', f'An error occurred: {e}')
