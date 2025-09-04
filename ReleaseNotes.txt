@@ -1,5 +1,15 @@
 Release Notes
 =============
+Date:   02/09/2025
+Name:   June
+Release:
+1. Added script to drop tables listed in db_setup.py so tables with updated schemas can be recreated
+Run this script directly to drop tables
+
+Changes:
+db_drop_tables.py
+
+=============
 Date:   04/09/2025
 Name:   Kenneth Ng
 Release:
@@ -17,6 +27,30 @@ requirements.txt
 tests\test_usage.py
 
 =============
+Date:   02/09/2025
+Name:   June
+Release:
+1. Updated db tables
+2. Updated logic to populate db - system code, db table changes
+3. Added public holiday exclusion logic to timetable generation
+
+Changes:
+db_setup.py
+populate_db_from_schedule.py
+timetable_exclude_ph.py
+timetable_generation.py
+
+=============
+Date:   30/08/2025
+Name:   June
+Release:
+1. Updated import public holiday feature - message, console, layout
+
+Changes:
+public_holiday.py
+main.py
+
+=============
 Date:   27/08/2025
 Name:   Kenneth Ng
 Release:
@@ -26,6 +60,23 @@ Release:
 Changes:
 db_setup.py
 timetable.db
+
+=============
+Date:   25/08/2025 - 26/8/2025
+Name:   June
+Release:
+1. Added db table creation
+2. Added logic to populate db tables with data
+3. Added invoke populate db data from import template feature
+4. Added import public holiday feature
+5. Updated db tables
+6. Updated logic to populate db - to handle multiple records per job_id
+
+Changes:
+db_setup.py
+populate_db_from_schedule.py
+main.py
+public_holiday.py
 
 =============
 Date:   02/08/2025
