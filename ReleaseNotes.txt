@@ -1,5 +1,22 @@
 Release Notes
 =============
+Date:   04/09/2025
+Name:   Kenneth Ng
+Release:
+1. Added basic prototype of calendar view
+2. Added requirements.txt for mass installation of required libraries (run pip install -r requirements.txt --no-deps in cmd after changing to project directory)
+
+Changes:
+main.py
+timetable.db
+full_calendar_component\__init__.py
+full_calendar_component\_imports_.py
+calendar_view.py
+full_calendar_component\FullCalendarComponent.py
+requirements.txt
+tests\test_usage.py
+
+=============
 Date:   27/08/2025
 Name:   Kenneth Ng
 Release:

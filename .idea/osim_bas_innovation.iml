@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="JAVA_MODULE" version="4">
+  <component name="NewModuleRootManager" inherit-compiler-output="true">
+    <exclude-output />
+    <content url="file://$MODULE_DIR$">
+      <sourceFolder url="file://$MODULE_DIR$/files" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/windows" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/R" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/deps" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/full_calendar_component" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/inst" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/man" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/style" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/tests" isTestSource="false" />
+    </content>
+    <orderEntry type="inheritedJdk" />
+    <orderEntry type="sourceFolder" forTests="false" />
+  </component>
+</module>

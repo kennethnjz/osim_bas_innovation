@@ -27,6 +27,11 @@ import schedule_template_validation
 import populate_db_from_schedule
 import public_holiday
 
+import subprocess
+import webbrowser
+
+localhost_url = "http://127.0.0.1:8056/"
+
 # def challenge():
 #     conn = sqlite3.connect(r'files/timetable.db')
 #
@@ -173,6 +178,8 @@ def import_function():
         else:
             df = df.drop('validation_errors', axis=1)
 
+        db_setup.create_database()
+
 # Connect to SQLite database
         conn = sqlite3.connect(r'files/timetable.db')
 
@@ -292,6 +299,10 @@ def import_public_holiday_function():
     except Exception as e:
         messagebox.showerror('Import Failed', f'An error occurred: {e}')
         print(f"An error occurred: {e}")
+
+def open_calendar():
+    subprocess.Popen(["python", "calendar_view.py"])
+    #webbrowser.open(localhost_url)
 
  # Export OM
 def export_om():
@@ -543,5 +554,14 @@ tk.Button(
     padx=20,  # Smaller padding
     command=import_public_holiday_function
 ).pack(pady=5)  # Smaller vertical padding
+
+# Open Calendar button
+tk.Button(
+    m,
+    text='Open Calendar',
+    font=('Consolas', 12, 'bold'),
+    padx=30,
+    command=open_calendar
+).pack(pady=10)
 
 m.mainloop()
