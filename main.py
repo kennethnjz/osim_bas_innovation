@@ -564,4 +564,11 @@ tk.Button(
     command=open_calendar
 ).pack(pady=10)
 
-m.mainloop()
+try:
+    m.mainloop()
+except KeyboardInterrupt:
+    print("KeyboardInterrupt detected. Exiting Tkinter mainloop.")
+    m.quit()  # or root.destroy() depending on desired cleanup
+except Exception as e:
+    print(f"An unexpected error occurred: {e}")
+    m.destroy()
