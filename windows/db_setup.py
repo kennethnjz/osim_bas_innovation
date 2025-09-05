@@ -266,7 +266,7 @@ def create_database():
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_JOB_runchart_id ON JOB(runchart_id)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_JOB_server_id ON JOB(server_id)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_JOB_script_id ON JOB(script_id)')
-        cursor.execute('CREATE INDEX IF NOT EXISTS idx_JOB_script_id ON JOB(exclude_ph)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_JOB_exclude_ph ON JOB(exclude_ph)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_JOB_SRS_MAPPING_system_code ON JOB_SRS_MAPPING(system_code)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_RUN_SERIES_system_code_frequency ON RUN_SERIES(system_code, frequency)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_TIMETABLE_DAILY_series_id ON TIMETABLE_DAILY(series_id)')
