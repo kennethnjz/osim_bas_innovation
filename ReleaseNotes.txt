@@ -1,14 +1,21 @@
 Release Notes
 =============
-Date:   02/09/2025
+Date:   05/09/2025
+Name:   June
+Release:
+1. Reposition buttons: move import public holiday before generate timetable
+
+Changes:
+main.py
+=============
+Date:   04/09/2025
 Name:   June
 Release:
 1. Added script to drop tables listed in db_setup.py so tables with updated schemas can be recreated
 Run this script directly to drop tables
 
 Changes:
-db_drop_tables.py
-
+windows\db_drop_tables.py
 =============
 Date:   04/09/2025
 Name:   Kenneth Ng
@@ -18,7 +25,7 @@ Release:
 
 Changes:
 main.py
-timetable.db
+files\timetable.db
 full_calendar_component\__init__.py
 full_calendar_component\_imports_.py
 calendar_view.py
@@ -26,6 +33,14 @@ full_calendar_component\FullCalendarComponent.py
 requirements.txt
 tests\test_usage.py
 
+=============
+Date:   03/09/2025
+Name:   Jeremy
+Release:
+1. formatted scheduling instructions for each job
+
+Changes:
+main.py
 =============
 Date:   02/09/2025
 Name:   June
@@ -35,11 +50,10 @@ Release:
 3. Added public holiday exclusion logic to timetable generation
 
 Changes:
-db_setup.py
-populate_db_from_schedule.py
-timetable_exclude_ph.py
-timetable_generation.py
-
+windows\db_setup.py
+windows\populate_db_from_schedule.py
+windows\timetable_exclude_ph.py
+windows\timetable_generation.py
 =============
 Date:   30/08/2025
 Name:   June
@@ -47,9 +61,25 @@ Release:
 1. Updated import public holiday feature - message, console, layout
 
 Changes:
-public_holiday.py
+windows\public_holiday.py
 main.py
+=============
+Date:   28/08/2025 - 29/08/2025
+Name:   Zhi Hui
+Release:
+1. weekly timetable data generation
 
+Changes:
+windows\timetable_weekly.py --> windows\timetable_generation.py
+main.py
+=============
+Date:   27/08/2025
+Name:   Jeremy
+Release:
+1. OS export draft
+
+Changes:
+main.py
 =============
 Date:   27/08/2025
 Name:   Kenneth Ng
@@ -58,8 +88,8 @@ Release:
 2. Updated DB Setup script to add TIMETABLE_DATETIME table creation
 
 Changes:
-db_setup.py
-timetable.db
+windows\db_setup.py
+files\timetable.db
 
 =============
 Date:   25/08/2025 - 26/8/2025
@@ -67,23 +97,41 @@ Name:   June
 Release:
 1. Added db table creation
 2. Added logic to populate db tables with data
-3. Added invoke populate db data from import template feature
+3. Added to call populate db data logic from import template feature
 4. Added import public holiday feature
-5. Updated db tables
+5. Updated db tables' fields
 6. Updated logic to populate db - to handle multiple records per job_id
 
 Changes:
-db_setup.py
-populate_db_from_schedule.py
+windows\db_setup.py
+windows\populate_db_from_schedule.py
 main.py
-public_holiday.py
-
+windows\public_holiday.py
 =============
-Date:   02/08/2025
+Date:   20/08/2025 - 21/8/2025
+Name:   Zhi Hui
+Release:
+1. weekly timetable data generation
+
+Changes:
+windows\timetable_weekly.py
+=============
+Date:   02/08/2025, 05/08/2025
 Name:   Jeremy
 Release:
 1. Updated export functionality to match import template column order and headers
+2. fix quotes
 
+Changes:
+main.py
+=============
+Date:   27/07/2025
+Name:   Min Yang
+Release:
+1. refactor: centralize empty value check
+
+Changes:
+windows\schedule_template_validation.py
 =============
 Date:   23/07/2025
 Name:   Kenneth Ng
@@ -95,6 +143,15 @@ Changes:
 files\timetable.db
 main.py
 windows\timetable_daily.py
+=============
+Date:   22/07/2025
+Name:   Zhi Hui
+Release:
+1. OM import validation
+
+Changes:
+windows\schedule_template_validation.py
+main.py
 =============
 Date:   18/07/2025
 Name:   Kenneth Ng

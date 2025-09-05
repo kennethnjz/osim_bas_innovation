@@ -534,6 +534,15 @@ tk.Button(
     command=export_om
 ).pack(pady=10)
 
+# Import Public Holiday button
+tk.Button(
+    m,
+    text='Import Public Holiday',
+    font=('Consolas', 12, 'bold'),
+    padx=30,
+    command=import_public_holiday_function
+).pack(pady=10)
+
 # Generate Timetable button
 tk.Button(
     m,
@@ -542,18 +551,6 @@ tk.Button(
     padx=30,
     command=generate_timetable
 ).pack(pady=10)
-
-# Add spacer
-tk.Label(m, text="", height=2).pack()  # Empty label as spacer
-
-# Import Public Holiday button (smaller size)
-tk.Button(
-    m,
-    text='Import Public Holiday',
-    font=('Consolas', 10, 'bold'),  # Smaller font size
-    padx=20,  # Smaller padding
-    command=import_public_holiday_function
-).pack(pady=5)  # Smaller vertical padding
 
 # Open Calendar button
 tk.Button(
