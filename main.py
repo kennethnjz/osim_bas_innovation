@@ -1,34 +1,27 @@
-import datetime
-import decimal
 import tkinter as tk
-from tkinter import ttk
 from tkinter import messagebox
 from tkinter import filedialog
-import mimetypes
 from pathlib import Path
 
-import numpy as np
-from sqlalchemy.types import *
+
 import os, sys
 
 import db_setup
 
-import timetable_daily
-import timetable_dependency
 import timetable_generation
 
 sys.path.insert(0, 'windows/')
-import timetable_stud
-import timetable_fac
+
 import sqlite3
 import pandas as pd
 
 import schedule_template_validation
 import populate_db_from_schedule
 import public_holiday
+import ganttchart
 
 import subprocess
-import webbrowser
+
 
 localhost_url = "http://127.0.0.1:8056/"
 
@@ -550,6 +543,15 @@ tk.Button(
     font=('Consolas', 12, 'bold'),
     padx=30,
     command=generate_timetable
+).pack(pady=10)
+
+# Generate Timetable button
+tk.Button(
+    m,
+    text='Generate Gantt Chart',
+    font=('Consolas', 12, 'bold'),
+    padx=30,
+    command=ganttchart.show_gantt_chart
 ).pack(pady=10)
 
 # Open Calendar button
