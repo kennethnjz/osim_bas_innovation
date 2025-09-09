@@ -328,7 +328,7 @@ def export_om():
             "start_time",
             "dependent_job_id",
             "minutes_dependent_job_id",
-            "job_frequency" # Add this if you expect it in export
+            "job_frequency"
         ]
         # Only select columns that exist in the DB
         query_cols = [col for col in db_cols if col != "job_frequency"]
@@ -346,7 +346,7 @@ def export_om():
         # Add scheduling_instructions column
         def make_instruction(row):
             job_id = row.get('job_id', '')
-            days_of_week = row.get('days_of_week', '')
+            days_of_week_raw = row.get('days_of_week', '')
             start_time = row.get('start_time', '')
             dependentjob = row.get('dependent_job_id', '')
             try:
@@ -360,14 +360,60 @@ def export_om():
             elif isinstance(excludepublicholidays, (int, float)):
                 excludepublicholidays = bool(excludepublicholidays)
 
+            # Convert days_of_week numbers to names and handle consecutive days
+            day_map = {
+                '1': 'Monday',
+                '2': 'Tuesday',
+                '3': 'Wednesday',
+                '4': 'Thursday',
+                '5': 'Friday',
+                '6': 'Saturday',
+                '7': 'Sunday'
+            }
+            day_order = ['1', '2', '3', '4', '5', '6', '7']
+            # Support comma-separated or space-separated numbers
+            if isinstance(days_of_week_raw, str):
+                day_nums = [d.strip() for d in days_of_week_raw.replace(';', ',').replace(' ', ',').split(',') if d.strip()]
+            elif isinstance(days_of_week_raw, (list, tuple)):
+                day_nums = [str(d) for d in days_of_week_raw]
+            else:
+                day_nums = []
+            # Sort and check for consecutive days
+            day_indices = sorted([day_order.index(d) for d in day_nums if d in day_order])
+            days_of_week = ''
+            if day_indices:
+                # Find consecutive ranges
+                ranges = []
+                start = prev = day_indices[0]
+                for idx in day_indices[1:]:
+                    if idx == prev + 1:
+                        prev = idx
+                    else:
+                        ranges.append((start, prev))
+                        start = prev = idx
+                ranges.append((start, prev))
+                # Format ranges
+                day_names = []
+                for s, e in ranges:
+                    if s == e:
+                        day_names.append(day_map[day_order[s]])
+                    else:
+                        day_names.append(f"{day_map[day_order[s]]} to {day_map[day_order[e]]}")
+                days_of_week = ', '.join(day_names)
+
             # Construct instruction string
-            instr = f"Job {job_id} runs {days_of_week}. \nRun at {start_time}."
+            if days_of_week and days_of_week.strip().lower() != 'None':
+                instr = f"Job {job_id} runs {days_of_week}."
+            else:
+                instr = f"Job {job_id}."
+            if start_time and str(start_time).strip().lower() != 'None':
+                instr += f"\nRun at {start_time}."
             if dependentjob:
                 if mins == 0:
-                    instr += f" \nRun immediately after completion of {dependentjob}."
+                    instr += f"\nRun immediately after completion of {dependentjob}."
                 else:
                     min_text = "min" if mins == 1 else "mins"
-                    instr += f" \nRun {mins} {min_text} after completion of {dependentjob}."
+                    instr += f"\nRun {mins} {min_text} after completion of {dependentjob}."
             if excludepublicholidays:
                 instr += "\nExclude public holidays."
             return instr
