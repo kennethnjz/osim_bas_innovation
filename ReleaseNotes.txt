@@ -1,5 +1,16 @@
 Release Notes
 =============
+Date:   10/09/2025
+Name:   Kenneth Ng
+Release:
+1. Adjusted window size for more buttons
+2. Added feature in calendar view to load from TIMETABLE_DATETIME table and display calendar based on calendar data
+
+Changes:
+calendar_view.py
+main.py
+
+=============
 Date:   05/09/2025
 Name:   June
 Release:

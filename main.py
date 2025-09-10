@@ -1,3 +1,4 @@
+from datetime import datetime
 import tkinter as tk
 from tkinter import messagebox
 from tkinter import filedialog
@@ -294,8 +295,83 @@ def import_public_holiday_function():
         print(f"An error occurred: {e}")
 
 def open_calendar():
-    subprocess.Popen(["python", "calendar_view.py"])
-    #webbrowser.open(localhost_url)
+
+    try:
+        conn = sqlite3.connect(r'files/timetable.db')
+        # Define all columns you want to select and export
+        db_cols = [
+            "series_id",
+            "job_id",
+            "start_run_datetime",
+            "end_run_datetime",
+            "dependent_job_id",
+        ]
+        # Only select columns that exist in the DB
+        query_cols = [col for col in db_cols]
+        query = f"SELECT {', '.join(query_cols)} FROM TIMETABLE_DATETIME"
+        df_query = pd.read_sql_query(query, conn)
+        conn.close()
+        if df_query.empty:
+            messagebox.showwarning('No Data', 'No data found in TIMETABLE_DATETIME!')
+            return
+
+        columns = [
+            'start_date' ,
+            'start_time' ,
+            'end_date' ,
+            'end_time' ,
+            'event_name' ,
+            'event_color' ,
+            'event_context'
+        ]
+
+        # Create an empty DataFrame with the specified columns
+        df_timetable = pd.DataFrame(columns=columns)
+
+        #expand dependency job
+        for idx, row in df_query.iterrows():
+            start_date = datetime.strptime(row['start_run_datetime'], "%Y%m%d%H%M").date().strftime("%Y-%m-%d")
+            end_date = datetime.strptime(row['end_run_datetime'], "%Y%m%d%H%M").date().strftime("%Y-%m-%d")
+            start_time = datetime.strptime(row['start_run_datetime'], "%Y%m%d%H%M").time().strftime("%H:%M:00")
+            end_time = datetime.strptime(row['end_run_datetime'], "%Y%m%d%H%M").time().strftime("%H:%M:00")
+
+            # print(start_date)
+            # print(end_date)
+
+            new_row = {
+                'start_date' : start_date,
+                'start_time' : start_time,
+                'end_date' : end_date,
+                'end_time' : end_time,
+                'event_name' : row['job_id'],
+                'event_color' : "bg-gradient-secondary",
+                'event_context' : row['series_id'] + ":" + row['job_id'] + ":" + row['dependent_job_id']
+            }
+            df_timetable.loc[len(df_timetable)] = new_row
+
+        print(df_timetable.to_json(date_format="ISO"))
+
+        df_test = pd.DataFrame({
+            'start_date' : ["2025-09-08"],
+            'start_time' : ["19:56:00"],
+            'end_date' : ["2025-09-02"],
+            'end_time' : ["21:56:00"],
+            'event_name' : ["LISD056"],
+            'event_color' : ["bg-gradient-primary"],
+            'event_context' : ["Job Description"]
+        })
+
+        subprocess.Popen(["python", "windows\calendar_view.py",df_timetable.to_json(date_format="ISO")])
+        #webbrowser.open(localhost_url)
+    except sqlite3.Error as e:
+        print(f"Error querying table: {e}")
+        conn.rollback() # Rollback if an error occurs
+    except Exception as e:
+        messagebox.showerror('Calendar Generation Failed', f'An error occurred: {e}')
+    finally:
+        conn.close()
+
+
 
  # Export OM
 def export_om():
@@ -454,7 +530,7 @@ def export_om():
 
 m = tk.Tk()
 
-m.geometry('450x500')
+m.geometry('450x550')
 m.title('Welcome')
 
 tk.Label(

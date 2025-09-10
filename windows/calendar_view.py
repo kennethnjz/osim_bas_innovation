@@ -1,3 +1,5 @@
+import io
+import dash_summernote
 import full_calendar_component as fcc
 from dash import *
 import dash_mantine_components as dmc
@@ -10,7 +12,7 @@ import webbrowser
 from threading import Timer
 import os
 
-app = Dash(__name__, prevent_initial_callbacks='initial_duplicate')
+app = Dash(__name__, prevent_initial_callbacks='initial_duplicate', external_stylesheets=['https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.css'], external_scripts=['https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.js'])
 
 quill_mods = [
     [{"header": "1"}, {"header": "2"}, {"font": []}],
@@ -18,6 +20,7 @@ quill_mods = [
     ["bold", "italic", "underline", "strike", "blockquote"],
     [{"list": "ordered"}, {"list": "bullet"}, {"indent": "-1"}, {"indent": "+1"}],
     ["link", "image"],
+    ["table", ["table"]],
 ]
 
 # Get today's date                                                                                            
@@ -81,6 +84,7 @@ app.layout = html.Div(
                     title="Event Details",
                     zIndex=10000,
                     children=[
+                        html.Div(id="modal_event_display_output"),
                         html.Div(id="modal_event_display_context"),
                         dmc.Space(h=20),
                         dmc.Group(
@@ -233,6 +237,45 @@ app.layout = html.Div(
                                 ),
                             ]
                         ),
+                        dash_summernote.DashSummernote(
+                            id='summernote',
+                            value='my-value',
+                            toolbar=[
+                                ["style", ["style"]],
+                                ["font", ["bold", "underline", "clear"]],
+                                ["fontname", ["fontname"]],
+                                ["para", ["ul", "ol", "paragraph"]],
+                                ["table", ["table"]],
+                                ["insert", ["link", "picture", "video"]],
+                                ["view", ["fullscreen", "codeview"]]
+                            ],
+                            height=300
+                        ),
+                        dash_summernote.DashSummernote(
+                            id='raw_output',
+                            value='raw_output',
+                            toolbar=[],
+                            height=300
+                        ),
+                        dmc.Accordion(
+                            children=[
+                                dmc.AccordionItem(
+                                    [
+                                        dmc.AccordionControl("Raw HTML"),
+                                        dmc.AccordionPanel(
+                                            html.Div(
+                                                id="output_html",
+                                                style={
+                                                    "height": "300px",
+                                                    "overflowY": "scroll",
+                                                },
+                                            )
+                                        ),
+                                    ],
+                                    value="raw_html",
+                                ),
+                            ],
+                        ),
                         dash_quill.Quill(
                             id="rich_text_input",
                             modules={
@@ -289,6 +332,7 @@ app.layout = html.Div(
 @app.callback(
     Output("modal", "opened"),
     Output("modal", "title"),
+    Output("modal_event_display_output", "children"),
     Output("modal_event_display_context", "children"),
     Input("modal-close-button", "n_clicks"),
     Input("calendar", "clickedEvent"),
@@ -305,9 +349,20 @@ def open_event_modal(n, clickedEvent, opened):
     if button_id == "calendar" and clickedEvent is not None:
         event_title = clickedEvent["title"]
         event_context = clickedEvent["extendedProps"]["context"]
+        print("event_context")
+        print(event_context)
         return (
             True,
             event_title,
+            html.Div(
+                dash_summernote.DashSummernote(
+                    id='modal_event_display_output2',
+                    value="event_context",
+                    toolbar=[],
+                    height=300
+                ),
+                style={"width": "100%", "overflowY": "auto"},
+            ),
             html.Div(
                 dash_quill.Quill(
                     id="input3",
@@ -323,7 +378,7 @@ def open_event_modal(n, clickedEvent, opened):
             ),
         )
     elif button_id == "modal-close-button" and n is not None:
-        return False, no_update, no_update
+        return False, no_update, no_update, no_update
 
     return opened, no_update
 
@@ -378,15 +433,17 @@ def open_add_modal(dateClicked, close_clicks, opened):
 #     'start_time' : ["19:56:00"]
 # })
 
-df = pd.DataFrame({
-   'start_date' : ["2025-09-02"],
-   'start_time' : ["19:56:00"],
-   'end_date' : ["2025-09-02"],
-   'end_time' : ["21:56:00"],
-   'event_name' : ["LISD056"],
-   'event_color' : ["bg-gradient-primary"],
-   'event_context' : ["Job Description"]
-})
+# df = pd.DataFrame({
+#    'start_date' : ["2025-09-08"],
+#    'start_time' : ["19:56:00"],
+#    'end_date' : ["2025-09-02"],
+#    'end_time' : ["21:56:00"],
+#    'event_name' : ["LISD056"],
+#    'event_color' : ["bg-gradient-primary"],
+#    'event_context' : ["Job Description"]
+# })
+
+df = pd.DataFrame()
 
 @app.callback(
     Output("calendar", "events"),
@@ -417,8 +474,11 @@ def add_new_event(
     current_events,
     tweet_value,
 ):
+    # print(type(current_events))
+    new_events = list()
     if n is None:
         # print("Avoiding update")
+        # print(df.to_json())
         for idx, row in df.iterrows():
             start_date = row['start_date']
             start_time = row['start_time']
@@ -427,37 +487,102 @@ def add_new_event(
             event_name = row['event_name']
             event_color = row['event_color']
             event_context = row['event_context']
+
         # raise PreventUpdate
-    # print(tweet_value)
-    # print(start_date, start_time, end_date, end_time, event_name, event_color)
-    # print()
-    # print('time_obj')
-    start_time_obj = datetime.strptime(start_date + " " +  start_time, "%Y-%m-%d %H:%M:%S")
-    # print(start_time_obj)
-    if 'T' in end_time:
-        end_time_obj = datetime.strptime(end_date + "T" + end_time, "%Y-%m-%dT%H:%M:%S")
+            # print(tweet_value)
+            # print(start_date, start_time, end_date, end_time, event_name, event_color)
+            # print()
+            # print('time_obj')
+            start_time_obj = datetime.strptime(start_date + " " +  start_time, "%Y-%m-%d %H:%M:%S")
+            # print(start_time_obj)
+            if 'T' in end_time:
+                end_time_obj = datetime.strptime(end_date + "T" + end_time, "%Y-%m-%dT%H:%M:%S")
+            else:
+                end_time_obj = datetime.strptime(end_date + " " + end_time, "%Y-%m-%d %H:%M:%S")
+            # print(end_time_obj)
+
+            # print('time_str')
+            start_time_str = start_time_obj.strftime("%H:%M:%S")
+            # print(start_time_str)
+            end_time_str = end_time_obj.strftime("%H:%M:%S")
+            # print(end_time_str)
+
+            start_date = f"{start_date}T{start_time_str}"
+            end_date = f"{end_date}T{end_time_str}"
+
+            new_event = {
+                "title": event_name,
+                "start": start_date,
+                "end": end_date,
+                "className": event_color,
+                "context": event_context,
+            }
+
+            new_events.append({
+                "title": event_name,
+                "start": start_date,
+                "end": end_date,
+                "className": event_color,
+                "context": event_context,
+            })
+
+            #new_events = new_events.append(new_event)
+
+            # print("new_event:")
+            # print(new_event)
+            #
+            # print("new_events")
+            # print(new_events)
+            #
+            # print("current events: ")
+            # print((current_events + new_events))
     else:
-        end_time_obj = datetime.strptime(end_date + " " + end_time, "%Y-%m-%d %H:%M:%S")
-    # print(end_time_obj)
+        start_time_obj = datetime.strptime(start_date + " " +  start_time, "%Y-%m-%d %H:%M:%S")
+        # print(start_time_obj)
+        if 'T' in end_time:
+            end_time_obj = datetime.strptime(end_date + "T" + end_time, "%Y-%m-%dT%H:%M:%S")
+        else:
+            end_time_obj = datetime.strptime(end_date + " " + end_time, "%Y-%m-%d %H:%M:%S")
+        # print(end_time_obj)
 
-    # print('time_str')
-    start_time_str = start_time_obj.strftime("%H:%M:%S")
-    # print(start_time_str)
-    end_time_str = end_time_obj.strftime("%H:%M:%S")
-    # print(end_time_str)
+        # print('time_str')
+        start_time_str = start_time_obj.strftime("%H:%M:%S")
+        # print(start_time_str)
+        end_time_str = end_time_obj.strftime("%H:%M:%S")
+        # print(end_time_str)
 
-    start_date = f"{start_date}T{start_time_str}"
-    end_date = f"{end_date}T{end_time_str}"
+        start_date = f"{start_date}T{start_time_str}"
+        end_date = f"{end_date}T{end_time_str}"
 
-    new_event = {
-        "title": event_name,
-        "start": start_date,
-        "end": end_date,
-        "className": event_color,
-        "context": event_context,
-    }
+        new_event = {
+            "title": event_name,
+            "start": start_date,
+            "end": end_date,
+            "className": event_color,
+            "context": event_context,
+        }
 
-    return current_events + [new_event], False, "", "bg-gradient-primary", ""
+        new_events.append({
+            "title": event_name,
+            "start": start_date,
+            "end": end_date,
+            "className": event_color,
+            "context": event_context,
+        })
+
+        #new_events = new_events.append(new_event)
+
+        # print("new_event:")
+        # print(new_event)
+        #
+        # print("new_events")
+        # print(new_events)
+        #
+        # print("current events: ")
+
+    # print((current_events + new_events))
+
+    return current_events + new_events, False, "", "bg-gradient-secondary", ""
 
 @app.callback(
     Output("tweet_value", "children"),
@@ -503,6 +628,13 @@ def update_output(n_clicks):
 def display_output(value, charCount):
     return value
 
+@app.callback(Output('output_html', 'children'),
+              Output('raw_output', 'value'),
+              Input('summernote', 'value'))
+def display_output_html(value):
+    print(value)
+    return value, value
+
  # Function to open the browser
 def open_browser():
     # Check if the server is already running in a different process
@@ -511,6 +643,13 @@ def open_browser():
         webbrowser.open_new("http://127.0.0.1:8056/")
 
 if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        # print(f"Arguments received: {sys.argv[1]}")
+        df_new = pd.read_json(io.StringIO(sys.argv[1]), convert_dates=False)
+        df = pd.concat([df,df_new], ignore_index=True)
+        print(df.to_json())
+    else:
+        print("No arguments received.")
     # Schedule the browser to open 1 second after the server starts
     Timer(1, open_browser).start()
     app.run(debug=True, port=8056)
