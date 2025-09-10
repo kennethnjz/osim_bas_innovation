@@ -29,36 +29,8 @@ today = datetime.now()
 # Format the date
 formatted_date = today.strftime("%Y-%m-%d")
 
-def total_tweet_callback():
-    df = pd.DataFrame({
-        'start_date' : ["2025-09-02"],
-        'start_time' : ["19:56:00"],
-        'end_date' : ["2025-09-02"],
-        'end_time' : ["21:56:00"],
-        'event_name' : ["LISD056"],
-        'event_color' : ["bg-gradient-primary"],
-        'end_time' : ["21:56:00"]
-    })
-    return df.to_json(date_format='iso', orient='split')
-
 app.layout = html.Div(
     [
-        html.Div([
-            html.Button("Click Me", id="my-button"),
-            html.Div(id="output-div")
-        ]),
-        html.P(
-           children=total_tweet_callback(),
-           id='tweet_value',
-           className="indicator_value"
-        ),
-        html.Div(id="output"),
-        dcc.Interval(
-            id="load_interval",
-            n_intervals=0,
-            max_intervals=0, #<-- only run once
-            interval=1
-        ),
         fcc.FullCalendarComponent(
             id="calendar",  # Unique ID for the component
             initialView="dayGridMonth",  # dayGridMonth, timeGridWeek, timeGridDay, listWeek,
@@ -423,16 +395,7 @@ def open_add_modal(dateClicked, close_clicks, opened):
 
     return opened, no_update, no_update, no_update, no_update
 
-# df = pd.DataFrame({
-#    'student_id' : range(1, 11),
-#    'score' : [1, 5, 2, 5, 2, 3, 1, 5, 1, 5]
-# })
-
-# df = pd.DataFrame({
-#     'start_date' : ["2025-09-02"],
-#     'start_time' : ["19:56:00"]
-# })
-
+# Test Dataframe
 # df = pd.DataFrame({
 #    'start_date' : ["2025-09-08"],
 #    'start_time' : ["19:56:00"],
@@ -460,7 +423,6 @@ df = pd.DataFrame()
     State("event_color_select", "value"),
     State("rich_text_output", "children"),
     State("calendar", "events"),
-    State("tweet_value", "children"),
 )
 def add_new_event(
     n,
@@ -472,7 +434,6 @@ def add_new_event(
     event_color,
     event_context,
     current_events,
-    tweet_value,
 ):
     # print(type(current_events))
     new_events = list()
@@ -489,7 +450,6 @@ def add_new_event(
             event_context = row['event_context']
 
         # raise PreventUpdate
-            # print(tweet_value)
             # print(start_date, start_time, end_date, end_time, event_name, event_color)
             # print()
             # print('time_obj')
@@ -584,41 +544,6 @@ def add_new_event(
 
     return current_events + new_events, False, "", "bg-gradient-secondary", ""
 
-@app.callback(
-    Output("tweet_value", "children"),
-    Input("tweet_value", "children"),
-    #State("start_date", "value"),
-    #State("start_time", "value"),
-    #State("end_date", "value"),
-    #State("end_time", "value"),
-    #State("event_name_input", "value"),
-    #State("event_color_select", "value"),
-    #State("rich_text_output", "children"),
-    #State("calendar", "events"),
-    #State("tweet_value", "children"),
-)
-def test_init(
-        tweet_value,
-):
-    # print(tweet_value)
-    return tweet_value
-
-@app.callback(
-    Output("output-div", "children"),
-    Input("my-button", "n_clicks")
-)
-def update_output(n_clicks):
-    if n_clicks is not None:
-        return f"Button clicked {n_clicks} times."
-    return "Waiting for button click."
-
-#@app.callback(
-#    Output(component_id="tweet_value", component_property="children"),
-#    Input(component_id="load_interval", component_property="n_intervals"),
-#)
-#def update_tweet_value(n_intervals:int):
-#    print("Start interval")
-#    return total_tweet_callback()
 
 @app.callback(
     Output("rich_text_output", "children"),

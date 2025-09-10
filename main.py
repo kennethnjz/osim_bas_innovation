@@ -26,54 +26,6 @@ import subprocess
 
 localhost_url = "http://127.0.0.1:8056/"
 
-# def challenge():
-#     conn = sqlite3.connect(r'files/timetable.db')
-#
-#     user = str(combo1.get())
-#     if user == "Student":
-#         cursor = conn.execute(f"SELECT PASSW, SECTION, NAME, ROLL FROM STUDENT WHERE SID='{id_entry.get()}'")
-#         cursor = list(cursor)
-#         if len(cursor) == 0:
-#             messagebox.showwarning('Bad id', 'No such user found!')
-#         elif passw_entry.get() != cursor[0][0]:
-#             messagebox.showerror('Bad pass', 'Incorret Password!')
-#         else:
-#             nw = tk.Tk()
-#             tk.Label(
-#                 nw,
-#                 text=f'{cursor[0][2]}\tSection: {cursor[0][1]}\tRoll No.: {cursor[0][3]}',
-#                 font=('Consolas', 12, 'italic'),
-#             ).pack()
-#             m.destroy()
-#             timetable_stud.student_tt_frame(nw, cursor[0][1])
-#             nw.mainloop()
-#
-#     elif user == "Faculty":
-#         cursor = conn.execute(f"SELECT PASSW, INI, NAME, EMAIL FROM FACULTY WHERE FID='{id_entry.get()}'")
-#         cursor = list(cursor)
-#         if len(cursor) == 0:
-#             messagebox.showwarning('Bad id', 'No such user found!')
-#         elif passw_entry.get() != cursor[0][0]:
-#             messagebox.showerror('Bad pass', 'Incorret Password!')
-#         else:
-#             nw = tk.Tk()
-#             tk.Label(
-#                 nw,
-#                 text=f'{cursor[0][2]} ({cursor[0][1]})\tEmail: {cursor[0][3]}',
-#                 font=('Consolas', 12, 'italic'),
-#             ).pack()
-#             m.destroy()
-#             timetable_fac.fac_tt_frame(nw, cursor[0][1])
-#             nw.mainloop()
-#
-#     elif user == "Admin":
-#         if id_entry.get() == 'admin' and passw_entry.get() == 'admin':
-#             m.destroy()
-#             os.system('py windows\\admin_screen.py')
-#             # sys.exit()
-#         else:
-#             messagebox.showerror('Bad Input', 'Incorret Username/Password!')
-
 def import_function():
     filename = filedialog.askopenfilename(initialdir = "/",
                                           title = "Select the Import Template",
@@ -91,69 +43,8 @@ def import_function():
         return
 
     try:
-    #     # Read Excel file into a pandas DataFrame
-    #     col_names = [
-    #         "srs_function",
-    #         "series_id",
-    #         "series_title",
-    #         "job_id",
-    #         "job_desc",
-    #         "remarks",
-    #         "start_run_date",
-    #         "end_run_date",
-    #         "run_mode",
-    #         "est_trx_vol",
-    #         "est_run_time",
-    #         "priority_level",
-    #         "server_name",
-    #         "script",
-    #         "os_option",
-    #         "schedule_type",
-    #         "month",
-    #         "week_no",
-    #         "day_no",
-    #         "yearly_run_date",
-    #         "days_of_week",
-    #         "exclude_public_holidays",
-    #         "start_time",
-    #         "dependent_job_id",
-    #         "minutes_dependent_job_id"
-    #     ]
-    #
-    #     df_schema = {
-    #         "srs_function": str,
-    #         "series_id": str,
-    #         "series_title": str,
-    #         "job_id": str,
-    #         "job_desc": str,
-    #         "remarks": str,
-    #         "start_run_date": int,
-    #         "end_run_date": str,
-    #         "run_mode": str,
-    #         "est_trx_vol": int,
-    #         "est_run_time": int,
-    #         "priority_level": int,
-    #         "server_name": str,
-    #         "script": str,
-    #         "os_option": int,
-    #         "schedule_type": str,
-    #         "month": str,
-    #         "week_no": str,
-    #         "day_no": str,
-    #         "yearly_run_date": str,
-    #         "days_of_week": str,
-    #         "exclude_public_holidays": bool,
-    #         "start_time": str,
-    #         "dependent_job_id": str,
-    #         "minutes_dependent_job_id": str
-    #     }
-
-        # if file_type == ".xlsx":
-        #     df = pd.read_excel(filename,sheet_name="Template",names=col_names,dtype=df_schema)
-        # elif file_type == ".csv":
-        #     df = pd.read_csv(filename,names=col_names,dtype=df_schema, encoding='cp1252',skiprows=1)
         df = schedule_template_validation.load_template_sheet(file_type, filename)
-        print(df)
+        # print(df)
         df['validation_errors'] = df.apply(schedule_template_validation.validate_row, axis=1)
         has_error = (df['validation_errors'].astype(str).str.strip() != '').any()
         if has_error:
@@ -174,7 +65,7 @@ def import_function():
 
         db_setup.create_database()
 
-# Connect to SQLite database
+        # Connect to SQLite database
         conn = sqlite3.connect(r'files/timetable.db')
 
         # Load DataFrame into SQLite table (e.g., named 'excel_data')
@@ -294,9 +185,11 @@ def import_public_holiday_function():
         messagebox.showerror('Import Failed', f'An error occurred: {e}')
         print(f"An error occurred: {e}")
 
+# Open new browser for calendar view
 def open_calendar():
 
     try:
+        # Load DB
         conn = sqlite3.connect(r'files/timetable.db')
         # Define all columns you want to select and export
         db_cols = [
@@ -328,7 +221,7 @@ def open_calendar():
         # Create an empty DataFrame with the specified columns
         df_timetable = pd.DataFrame(columns=columns)
 
-        #expand dependency job
+        # Loop to insert new row of dataframe to be passed to subprocess
         for idx, row in df_query.iterrows():
             start_date = datetime.strptime(row['start_run_datetime'], "%Y%m%d%H%M").date().strftime("%Y-%m-%d")
             end_date = datetime.strptime(row['end_run_datetime'], "%Y%m%d%H%M").date().strftime("%Y-%m-%d")
@@ -349,20 +242,21 @@ def open_calendar():
             }
             df_timetable.loc[len(df_timetable)] = new_row
 
-        print(df_timetable.to_json(date_format="ISO"))
+        # print(df_timetable.to_json(date_format="ISO"))
 
-        df_test = pd.DataFrame({
-            'start_date' : ["2025-09-08"],
-            'start_time' : ["19:56:00"],
-            'end_date' : ["2025-09-02"],
-            'end_time' : ["21:56:00"],
-            'event_name' : ["LISD056"],
-            'event_color' : ["bg-gradient-primary"],
-            'event_context' : ["Job Description"]
-        })
+        # Test Dataframe for testing
+        # df_test = pd.DataFrame({
+        #     'start_date' : ["2025-09-08"],
+        #     'start_time' : ["19:56:00"],
+        #     'end_date' : ["2025-09-02"],
+        #     'end_time' : ["21:56:00"],
+        #     'event_name' : ["LISD056"],
+        #     'event_color' : ["bg-gradient-primary"],
+        #     'event_context' : ["Job Description"]
+        # })
 
+        # Open calendar subprocess
         subprocess.Popen(["python", "windows\calendar_view.py",df_timetable.to_json(date_format="ISO")])
-        #webbrowser.open(localhost_url)
     except sqlite3.Error as e:
         print(f"Error querying table: {e}")
         conn.rollback() # Rollback if an error occurs
