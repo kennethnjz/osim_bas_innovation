@@ -1,5 +1,19 @@
 Release Notes
 =============
+Date:   16/09/2025
+Name:   Kenneth Ng
+Release:
+1. Added table in calendar event popup
+2. Blocked add event feature to calendar
+3. Changed label of Calendar button and file import
+
+Changes:
+windows\assets\markdown_tables.css
+timetable.db
+calendar_view.py
+main.py
+
+=============
 Date:   10/09/2025
 Name:   Kenneth Ng
 Release:

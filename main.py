@@ -34,7 +34,7 @@ def import_function():
                                                        ("CSV Files",
                                                         "*.csv*")))
 
-    filepath.config(text="File Opened: " + filename)
+    # filepath.config(text="File Opened: " + filename)
 
     file_type = Path(filename).suffix
     print("File Type: " + file_type)
@@ -236,9 +236,12 @@ def open_calendar():
                 'start_time' : start_time,
                 'end_date' : end_date,
                 'end_time' : end_time,
-                'event_name' : row['job_id'],
+                'event_name' : row["job_id"],
                 'event_color' : "bg-gradient-secondary",
-                'event_context' : row['series_id'] + ":" + row['job_id'] + ":" + row['dependent_job_id']
+                'event_context' : f'''| Series ID | Job ID | Start Date & Time | End Date & Time | Dependent Job ID |
+                | :------: | :------: | :------: | :------: | :------: |
+                | {row["series_id"]} | {row["job_id"]} | {start_date} {start_time} | {end_date} {end_time} | {row["dependent_job_id"]} |'''
+                # 'event_context' : f'<table class="table table-bordered" style="font-size: 1rem;"><tbody><tr><td><h6>Series ID</h6></td><td><h6>Job ID</h6></td><td><h6>Start Date &amp; Time</h6></td><td><h6>End Date &amp; Time</h6></td><td><h6>Dependent Job ID</h6></td></tr><tr><td>{row["series_id"]}</td><td>{row["job_id"]}</td><td>value3</td><td>value4</td><td>{row["dependent_job_id"]}</td></tr></tbody></table><p><br></p>'
             }
             df_timetable.loc[len(df_timetable)] = new_row
 
@@ -500,7 +503,7 @@ tk.Button(
 # Open Calendar button
 tk.Button(
     m,
-    text='Open Calendar',
+    text='Generate Calendar',
     font=('Consolas', 12, 'bold'),
     padx=30,
     command=open_calendar

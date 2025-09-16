@@ -41,7 +41,7 @@ app.layout = html.Div(
                 "right": "listWeek,timeGridDay,timeGridWeek,dayGridMonth",
             },  # Calendar header
             initialDate=f"{formatted_date}",  # Start date for calendar
-            editable=True,  # Allow events to be edited
+            editable=False,  # Allow events to be edited
             selectable=True,  # Allow dates to be selected
             events=[],
             nowIndicator=True,  # Show current time indicator
@@ -53,11 +53,11 @@ app.layout = html.Div(
                 dmc.Modal(
                     id="modal",
                     size="xl",
-                    title="Event Details",
+                    title="Job Details",
                     zIndex=10000,
                     children=[
                         html.Div(id="modal_event_display_output"),
-                        html.Div(id="modal_event_display_context"),
+                        html.Div(id="modal_event_display_context", hidden=True),
                         dmc.Space(h=20),
                         dmc.Group(
                             [
@@ -321,19 +321,16 @@ def open_event_modal(n, clickedEvent, opened):
     if button_id == "calendar" and clickedEvent is not None:
         event_title = clickedEvent["title"]
         event_context = clickedEvent["extendedProps"]["context"]
-        print("event_context")
+        print("event_context: ")
         print(event_context)
         return (
             True,
-            event_title,
+            "Job Details",
             html.Div(
-                dash_summernote.DashSummernote(
-                    id='modal_event_display_output2',
-                    value="event_context",
-                    toolbar=[],
-                    height=300
-                ),
-                style={"width": "100%", "overflowY": "auto"},
+                dcc.Markdown(f'''
+                {event_context}
+                ''',
+                className="md-table")
             ),
             html.Div(
                 dash_quill.Quill(
@@ -374,24 +371,26 @@ def open_add_modal(dateClicked, close_clicks, opened):
     else:
         button_id = ctx.triggered[0]["prop_id"].split(".")[0]
 
-    if button_id == "calendar" and dateClicked is not None:
-        try:
-            start_time = datetime.strptime(dateClicked, "%Y-%m-%dT%H:%M:%S%z").time()
-            start_date_obj = datetime.strptime(dateClicked, "%Y-%m-%dT%H:%M:%S%z")
-            start_date = start_date_obj.strftime("%Y-%m-%d")
-            end_date = start_date_obj.strftime("%Y-%m-%d")
-        except ValueError:
-            start_time = datetime.now().time()
-            start_date_obj = datetime.strptime(dateClicked, "%Y-%m-%d")
-            start_date = start_date_obj.strftime("%Y-%m-%d")
-            end_date = start_date_obj.strftime("%Y-%m-%d")
-        end_time = datetime.combine(date.today(), start_time) + timedelta(hours=1)
-        start_time_str = start_time.strftime("%Y-%m-%d %H:%M:%S")
-        end_time_str = end_time.strftime("%Y-%m-%d %H:%M:%S")
-        return True, start_date, end_date, start_time_str, end_time_str
+    raise PreventUpdate
 
-    elif button_id == "modal_close_new_event_button" and close_clicks is not None:
-        return False, no_update, no_update, no_update, no_update
+    # if button_id == "calendar" and dateClicked is not None:
+    #     try:
+    #         start_time = datetime.strptime(dateClicked, "%Y-%m-%dT%H:%M:%S%z").time()
+    #         start_date_obj = datetime.strptime(dateClicked, "%Y-%m-%dT%H:%M:%S%z")
+    #         start_date = start_date_obj.strftime("%Y-%m-%d")
+    #         end_date = start_date_obj.strftime("%Y-%m-%d")
+    #     except ValueError:
+    #         start_time = datetime.now().time()
+    #         start_date_obj = datetime.strptime(dateClicked, "%Y-%m-%d")
+    #         start_date = start_date_obj.strftime("%Y-%m-%d")
+    #         end_date = start_date_obj.strftime("%Y-%m-%d")
+    #     end_time = datetime.combine(date.today(), start_time) + timedelta(hours=1)
+    #     start_time_str = start_time.strftime("%Y-%m-%d %H:%M:%S")
+    #     end_time_str = end_time.strftime("%Y-%m-%d %H:%M:%S")
+    #     return True, start_date, end_date, start_time_str, end_time_str
+    #
+    # elif button_id == "modal_close_new_event_button" and close_clicks is not None:
+    #     return False, no_update, no_update, no_update, no_update
 
     return opened, no_update, no_update, no_update, no_update
 
@@ -557,7 +556,8 @@ def display_output(value, charCount):
               Output('raw_output', 'value'),
               Input('summernote', 'value'))
 def display_output_html(value):
-    print(value)
+    # print("value: ")
+    # print(value)
     return value, value
 
  # Function to open the browser
