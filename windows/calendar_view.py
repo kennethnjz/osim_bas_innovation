@@ -1,5 +1,8 @@
 import io
 import dash_summernote
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import full_calendar_component as fcc
 from dash import *
 import dash_mantine_components as dmc
@@ -7,10 +10,8 @@ from dash.exceptions import PreventUpdate
 from datetime import datetime, date, timedelta
 import dash_quill
 import pandas as pd
-import sys
 import webbrowser
 from threading import Timer
-import os
 
 app = Dash(__name__, prevent_initial_callbacks='initial_duplicate', external_stylesheets=['https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.css'], external_scripts=['https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.js'])
 

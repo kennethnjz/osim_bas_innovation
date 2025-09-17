@@ -7,11 +7,10 @@ from pathlib import Path
 
 import os, sys
 
-import db_setup
-
-import timetable_generation
-
 sys.path.insert(0, 'windows/')
+
+import db_setup
+import timetable_generation
 
 import sqlite3
 import pandas as pd
