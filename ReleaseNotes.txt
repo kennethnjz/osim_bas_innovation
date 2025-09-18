@@ -1,5 +1,22 @@
 Release Notes
 =============
+Date:   18/09/2025
+Name:   June
+Release:
+1. Added build executable
+2. Repoint db path
+
+Changes:
+build_exe.py
+windows\setup_start_files.py
+windows\db_setup.py
+windows\ganttchart.py
+windows\populate_db_from_schedule.py
+windows\public_holiday.py
+windows\timetable_exclude_ph.py
+windows\timetable_generation.py
+main.py
+=============
 Date:   16/09/2025
 Name:   Kenneth Ng
 Release:
