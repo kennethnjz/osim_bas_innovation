@@ -1,4 +1,5 @@
 import sqlite3
+import setup_start_files
 
 def create_database():
     # # Ensure the files directory exists
@@ -6,7 +7,7 @@ def create_database():
     #     os.makedirs('files')
 
     # Connect to database (creates it if it doesn't exist)
-    conn = sqlite3.connect(r'files/timetable.db')  # Go up one level, then into files
+    conn = sqlite3.connect(setup_start_files.get_database_path()) # r'files/timetable.db'
     cursor = conn.cursor()
 
     # Create tables

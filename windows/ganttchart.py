@@ -3,16 +3,17 @@ import os
 import sqlite3
 import pandas as pd
 import plotly.express as px
+import setup_start_files
 
 def show_gantt_chart():
     # Get directory of this script
     base_dir = os.path.dirname(os.path.abspath(__file__))
 
     # DB is in ../files relative to this script
-    db_path = os.path.join(base_dir, "..", "files", "timetable.db")
+    # db_path = os.path.join(base_dir, "..", "files", "timetable.db")
 
     # Connect and fetch data
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(setup_start_files.get_database_path()) # db_path
     query = """
     SELECT series_id, job_id, start_run_datetime, end_run_datetime, dependent_job_id
     FROM TIMETABLE_DATETIME

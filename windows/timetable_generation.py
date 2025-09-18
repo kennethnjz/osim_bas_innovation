@@ -11,11 +11,10 @@ import numpy as np
 from sqlalchemy.types import *
 import os, sys
 sys.path.insert(0, 'windows/')
-import timetable_stud
-import timetable_fac
 import sqlite3
 import pandas as pd
 from datetime import datetime, timedelta
+import setup_start_files
 
 import timetable_exclude_ph
 
@@ -239,7 +238,7 @@ def generate_timetable():
     future_date = today + timedelta(days=numberOfDays)
     future_str = future_date.strftime('%Y%m%d')
 
-    conn = sqlite3.connect(r'files/timetable.db')
+    conn = sqlite3.connect(setup_start_files.get_database_path()) # r'files/timetable.db'
     df = pd.read_sql_query("SELECT * FROM OPERATING_SCHEDULE", conn)
 
     if df.empty:

@@ -2,6 +2,7 @@ import sqlite3
 import pandas as pd
 import re
 import db_setup
+import setup_start_files
 
 # Define delimiter as a variable for flexibility
 DELIMITER = ";"
@@ -14,7 +15,7 @@ def populate_data():
     db_setup.create_database()
 
     # Connect to database
-    conn = sqlite3.connect(r'files/timetable.db')
+    conn = sqlite3.connect(setup_start_files.get_database_path()) # r'files/timetable.db'
     cursor = conn.cursor()
 
     try:

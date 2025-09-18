@@ -2,6 +2,7 @@ import pandas as pd
 import sqlite3
 from datetime import datetime
 from pathlib import Path
+import setup_start_files
 
 def import_public_holiday(file_type, filename):
     """
@@ -81,7 +82,7 @@ def import_public_holiday(file_type, filename):
                 print(f"  {entry}")
 
         # Connect to database
-        conn = sqlite3.connect(r'files/timetable.db')
+        conn = sqlite3.connect(setup_start_files.get_database_path()) # r'files/timetable.db'
         cursor = conn.cursor()
 
         try:

@@ -1,5 +1,6 @@
 import sqlite3
 from datetime import datetime, timedelta
+import setup_start_files
 
 def exclude_public_holidays(numberOfDays=14):
     """
@@ -8,7 +9,7 @@ def exclude_public_holidays(numberOfDays=14):
     Parameters:
     - numberOfDays (int): Number of days from today to check for public holidays (default: 14)
     """
-    conn = sqlite3.connect(r'files/timetable.db')
+    conn = sqlite3.connect(setup_start_files.get_database_path()) # r'files/timetable.db'
     cursor = conn.cursor()
 
     try:

@@ -9,6 +9,10 @@ import os, sys
 
 sys.path.insert(0, 'windows/')
 
+# UPDATED IMPORT:
+import setup_start_files
+database_path = setup_start_files.get_database_path()
+
 import db_setup
 import timetable_generation
 
@@ -65,7 +69,7 @@ def import_function():
         db_setup.create_database()
 
         # Connect to SQLite database
-        conn = sqlite3.connect(r'files/timetable.db')
+        conn = sqlite3.connect(database_path) # r'files/timetable.db'
 
         # Load DataFrame into SQLite table (e.g., named 'excel_data')
         # 'if_exists='replace'' will overwrite the table if it already exists
@@ -85,7 +89,7 @@ def import_function():
         print(f"An error occurred: {e}")
 
 def generate_timetable():
-    conn = sqlite3.connect(r'files/timetable.db')
+    conn = sqlite3.connect(database_path) # r'files/timetable.db'
 
     cursor = conn.cursor()
 
@@ -112,7 +116,7 @@ def generate_timetable():
 # Export function
 def export_schedule():
     try:
-        conn = sqlite3.connect(r'files/timetable.db')
+        conn = sqlite3.connect(database_path) # r'files/timetable.db'
         col_names = [
             "srs_function",
             "series_id",
@@ -189,7 +193,7 @@ def open_calendar():
 
     try:
         # Load DB
-        conn = sqlite3.connect(r'files/timetable.db')
+        conn = sqlite3.connect(database_path) # r'files/timetable.db'
         # Define all columns you want to select and export
         db_cols = [
             "series_id",
@@ -272,7 +276,7 @@ def open_calendar():
  # Export OM
 def export_om():
     try:
-        conn = sqlite3.connect(r'files/timetable.db')
+        conn = sqlite3.connect(database_path) # r'files/timetable.db'
         # Define all columns you want to select and export
         db_cols = [
             "srs_function",
