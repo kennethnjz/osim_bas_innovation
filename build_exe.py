@@ -46,6 +46,7 @@ def build_executable():
             "--onefile",
             "--name", "OSIM",
             "--add-data", "files;files" if sys.platform == "win32" else "files:files",
+            "--add-data", "template;template" if sys.platform == "win32" else "template:template",
             "--distpath", output_dir,
             "main.py"
         ]

@@ -1,5 +1,17 @@
 Release Notes
 =============
+Date:   22/09/2025
+Name:   Kenneth
+Release:
+1. Added links to download blank template
+2. Various UI Adjustments
+
+Changes:
+build_exe.py
+main.py
+OM_Template.xlsx
+template\Public_Holiday_Template.xlsx
+=============
 Date:   18/09/2025
 Name:   June
 Release:

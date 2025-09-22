@@ -1,3 +1,4 @@
+import shutil
 from datetime import datetime
 import tkinter as tk
 from tkinter import messagebox
@@ -430,87 +431,157 @@ def export_om():
 
 m = tk.Tk()
 
-m.geometry('450x550')
-m.title('Welcome')
+m.geometry('980x300')
+m.title('Welcome to OS Insight Manager (OSIM)')
 
 tk.Label(
     m,
-    text='OS Intuitive Manager (OSIM)',
+    text='OS Insight Manager (OSIM)',
     font=('Consolas', 20, 'bold'),
     wrap=400
-).pack(pady=20)
+).pack(pady=20, side='top')
 
-filepath = tk.Label(
-    m,
-    text='Import the template:',
-    font=('Consolas', 15)
-)
-filepath.pack(pady=10)
+#Define a callback function
+def download_blank_template(template_type):
+    filetypes = [('Excel Files', '*.xlsx')]
+    # Define the source and destination paths
+    source_path = "C:/Users/YourUser/Documents/MyExcelFile.xlsx"  # Replace with your actual source path
+    destination_path = filedialog.asksaveasfilename(defaultextension='.xlsx', filetypes=filetypes, title='Download Template As')
+    if not destination_path:
+        return
+    if getattr(sys, 'frozen', False):
+        try:
+
+            # Get database from bundled resources
+            if template_type == "OM":
+                source_path = os.path.join(sys._MEIPASS, "template", "OM_Template.xlsx")
+            elif template_type == "PH":
+                source_path = os.path.join(sys._MEIPASS, "template", "Public_Holiday_Template.xlsx")
+            # Copy the file
+            shutil.copy2(source_path, destination_path)
+
+            # shutil.copy(source_path, destination_path)
+            messagebox.showinfo('Download Successful', f'Template downloaded to {destination_path}')
+        except Exception as e:
+            messagebox.showerror('Download Failed', f'An error occurred: {e}')
+    else:
+        try:
+
+            # DEVELOPMENT MODE: Use OM_template.xlsx directly
+            script_dir = Path(__file__).parent
+
+            # Define the source and destination paths
+            if template_type == "OM":
+                source_path = script_dir / "template" / "OM_Template.xlsx"  # Replace with your actual source path
+            elif template_type == "PH":
+                source_path = script_dir / "template" / "Public_Holiday_Template.xlsx"
+
+            # Copy the file
+            shutil.copy(source_path, destination_path)
+            messagebox.showinfo('Download Successful', f'Template downloaded to {destination_path}')
+        except Exception as e:
+            messagebox.showerror('Download Failed', f'An error occurred: {e}')
+
+
+#Create a Label to display the link
+link = tk.Label(m, text="Download Blank OM Template",font=('Helveticabold', 10), fg="blue", cursor="hand2")
+link.place(relx=0.8, rely=0.06)
+link.bind("<Button-1>", lambda e:
+download_blank_template("OM"))
+
+link_ph = tk.Label(m, text="Download Blank PH Template",font=('Helveticabold', 10), fg="blue", cursor="hand2")
+link_ph.place(relx=0.8, rely=0.125)
+link_ph.bind("<Button-1>", lambda e:
+download_blank_template("PH"))
+
+om_frame = tk.LabelFrame(m, text="Operating Manual", padx=10, pady=10)
+om_frame.pack(padx=10, pady=10, side='left', fill='both', expand=True)
+
+# filepath = tk.Label(
+#     m,
+#     text='Import the template:',
+#     font=('Consolas', 15)
+# )
+# filepath.pack(pady=10)
 
 # Import button
 tk.Button(
-    m,
+    om_frame,
     text='Import Template',
     font=('Consolas', 12, 'bold'),
     padx=30,
-    command=import_function
+    command=import_function,
+    width=20
 ).pack(pady=10)
-
-# Export button
 
 # Export button (full)
 tk.Button(
-    m,
-    text='Export Schedule',
+    om_frame,
+    text='Export Template',
     font=('Consolas', 12, 'bold'),
     padx=30,
-    command=export_schedule
+    command=export_schedule,
+    width=20
 ).pack(pady=10)
 
-# Export button (OM)
+# Export button (OS)
 tk.Button(
-    m,
-    text='Export OM',
+    om_frame,
+    text='Export Operating Manual',
     font=('Consolas', 12, 'bold'),
     padx=30,
-    command=export_om
+    command=export_om,
+    width=20
 ).pack(pady=10)
+
+# Generate Timetable button
+timetable_frame = tk.LabelFrame(m, text="Timetable", padx=10, pady=10)
+timetable_frame.pack(padx=10, pady=10, side='left', fill='both', expand=True)
 
 # Import Public Holiday button
 tk.Button(
-    m,
+    timetable_frame,
     text='Import Public Holiday',
     font=('Consolas', 12, 'bold'),
     padx=30,
-    command=import_public_holiday_function
+    command=import_public_holiday_function,
+    width=20
 ).pack(pady=10)
 
-# Generate Timetable button
 tk.Button(
-    m,
+    timetable_frame,
     text='Generate Timetable',
     font=('Consolas', 12, 'bold'),
     padx=30,
-    command=generate_timetable
+    command=generate_timetable,
+    width=20
 ).pack(pady=10)
 
-# Generate Timetable button
+# Generate Visualization
+visualization_frame = tk.LabelFrame(m, text="Data Visualization", padx=10, pady=10)
+visualization_frame.pack(padx=10, pady=10, side='left', fill='both', expand=True)
+
+# Generate Gantt Chart button
 tk.Button(
-    m,
-    text='Generate Gantt Chart',
+    visualization_frame,
+    text='View Gantt Chart',
     font=('Consolas', 12, 'bold'),
     padx=30,
-    command=ganttchart.show_gantt_chart
+    command=ganttchart.show_gantt_chart,
+    width=20
 ).pack(pady=10)
 
-# Open Calendar button
+# Generate Calendar button
 tk.Button(
-    m,
-    text='Generate Calendar',
+    visualization_frame,
+    text='View Calendar',
     font=('Consolas', 12, 'bold'),
     padx=30,
-    command=open_calendar
+    command=open_calendar,
+    width=20
 ).pack(pady=10)
+
+
 
 try:
     m.mainloop()
