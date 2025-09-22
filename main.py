@@ -8,7 +8,13 @@ from pathlib import Path
 
 import os, sys
 
-sys.path.insert(0, 'windows/')
+# Handle imports for both development and executable modes
+if getattr(sys, 'frozen', False):
+    # Executable mode - add bundled windows directory to path
+    sys.path.insert(0, os.path.join(sys._MEIPASS, 'windows'))
+else:
+    # Development mode
+    sys.path.insert(0, 'windows/')
 
 # UPDATED IMPORT:
 import setup_start_files
@@ -263,10 +269,18 @@ def open_calendar():
         # })
 
         # Open calendar subprocess
-        subprocess.Popen(["python", "windows\calendar_view.py",df_timetable.to_json(date_format="ISO")])
+        if getattr(sys, 'frozen', False):
+            # Executable mode - use bundled calendar_view.py
+            calendar_script = os.path.join(sys._MEIPASS, 'windows', 'calendar_view.py')
+        else:
+            # Development mode
+            calendar_script = "windows\calendar_view.py"
+        
+        subprocess.Popen(["python", calendar_script, df_timetable.to_json(date_format="ISO")])
     except sqlite3.Error as e:
         print(f"Error querying table: {e}")
-        conn.rollback() # Rollback if an error occurs
+        if 'conn' in locals():
+            conn.rollback() # Rollback if an error occurs
     except Exception as e:
         messagebox.showerror('Calendar Generation Failed', f'An error occurred: {e}')
     finally:

@@ -2,7 +2,16 @@ import io
 import dash_summernote
 import sys
 import os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# Handle imports for both development and executable modes
+if getattr(sys, 'frozen', False):
+    # Executable mode - add bundled full_calendar_component directory to path
+    sys.path.insert(0, os.path.join(sys._MEIPASS, 'full_calendar_component'))
+    sys.path.insert(0, sys._MEIPASS)
+else:
+    # Development mode
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import full_calendar_component as fcc
 from dash import *
 import dash_mantine_components as dmc
@@ -322,8 +331,8 @@ def open_event_modal(n, clickedEvent, opened):
     if button_id == "calendar" and clickedEvent is not None:
         event_title = clickedEvent["title"]
         event_context = clickedEvent["extendedProps"]["context"]
-        print("event_context: ")
-        print(event_context)
+        # print("event_context: ")
+        # print(event_context)
         return (
             True,
             "Job Details",
@@ -573,7 +582,7 @@ if __name__ == "__main__":
         # print(f"Arguments received: {sys.argv[1]}")
         df_new = pd.read_json(io.StringIO(sys.argv[1]), convert_dates=False)
         df = pd.concat([df,df_new], ignore_index=True)
-        print(df.to_json())
+        # print(df.to_json())
     else:
         print("No arguments received.")
     # Schedule the browser to open 1 second after the server starts

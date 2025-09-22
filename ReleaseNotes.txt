@@ -3,6 +3,18 @@ Release Notes
 Date:   22/09/2025
 Name:   Kenneth
 Release:
+1. Fixes on Calendar View in executable
+2. Fixes on missing imports in executable
+
+Changes:
+build_exe.py
+main.py
+calendar_view.py
+timetable.db
+=============
+Date:   22/09/2025
+Name:   Kenneth
+Release:
 1. Added links to download blank template
 2. Various UI Adjustments
 
@@ -11,6 +23,7 @@ build_exe.py
 main.py
 OM_Template.xlsx
 template\Public_Holiday_Template.xlsx
+template\OM_Template.xlsx
 =============
 Date:   18/09/2025
 Name:   June
