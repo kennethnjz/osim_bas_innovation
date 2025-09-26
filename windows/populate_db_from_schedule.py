@@ -30,7 +30,8 @@ def populate_data():
         tables_to_clear = [
             'SRS_FUNCTION', 'RUN_SERIES', 'RUNCHART', 'SERVER_NAME',
             'SCRIPT', 'JOB', 'JOB_SRS_MAPPING', 'JOB_DEPENDENCY',
-            'TIMETABLE_DAILY', 'TIMETABLE_WEEKLY', 'TIMETABLE_MONTHLY'
+            'TIMETABLE_DAILY', 'TIMETABLE_WEEKLY', 'TIMETABLE_MONTHLY',
+            'NORMAL', 'SCHEDULING_INSTRUCTION_ADD'
         ]
 
         for table in tables_to_clear:
@@ -55,6 +56,8 @@ def populate_data():
         timetable_daily = []
         timetable_weekly = []
         timetable_monthly = []
+        normal_records = []
+        scheduling_instructions = []
 
         # Group records by job_id for processing
         job_groups = df.groupby('job_id')
@@ -194,8 +197,19 @@ def populate_data():
                         'srs_version_number': ""
                     })
 
-            # Process timetable records and dependencies for each record of this job_id
-            timetable_records = process_job_timetables(job_id, job_records, series_id)
+                # Parse remarks field for additional data (only PT and SI records now)
+                remarks = str(first_record['remarks']).strip() if pd.notna(first_record['remarks']) else ""
+                if remarks:
+                    # Parse PT (NORMAL table) records
+                    normal_recs = parse_pt_records(remarks, job_id)
+                    normal_records.extend(normal_recs)
+
+                    # Parse SI (SCHEDULING_INSTRUCTION_ADD table) records
+                    si_recs = parse_si_records(remarks, job_id)
+                    scheduling_instructions.extend(si_recs)
+
+            # Process timetable records and ALL dependencies (regular + Run_if_scheduled) together
+            timetable_records, timetable_dependencies = process_job_timetables(job_id, job_records, series_id)
 
             # Add to appropriate timetable collections
             for record in timetable_records:
@@ -206,9 +220,8 @@ def populate_data():
                 elif frequency == 'M':
                     timetable_monthly.append(record)
 
-            # Process job dependencies
-            dependencies = process_job_dependencies(job_id, job_records)
-            job_dependencies.extend(dependencies)
+            # Add all dependencies (both regular and Run_if_scheduled)
+            job_dependencies.extend(timetable_dependencies)
 
         # Insert data into tables
         insert_srs_functions(cursor, list(srs_functions.values()))
@@ -222,6 +235,8 @@ def populate_data():
         insert_timetable_daily(cursor, timetable_daily)
         insert_timetable_weekly(cursor, timetable_weekly)
         insert_timetable_monthly(cursor, timetable_monthly)
+        insert_normal_records(cursor, normal_records)
+        insert_scheduling_instructions(cursor, scheduling_instructions)
 
         conn.commit()
         print("Database populated successfully from OPERATING_SCHEDULE!")
@@ -233,13 +248,127 @@ def populate_data():
     finally:
         conn.close()
 
+def parse_run_if_scheduled_from_remarks(remarks, job_id):
+    """
+    Parse Run_if_scheduled dependencies from remarks field
+    Returns list of job dependency records (without timetable_id - will be set by caller)
+    """
+    dependencies = []
+
+    # Look for "Run_if_scheduled:" pattern
+    pattern = r'Run_if_scheduled:\s*([^\n\r]+)'
+    matches = re.findall(pattern, remarks, re.IGNORECASE)
+
+    for match in matches:
+        # Split by semicolon and clean up
+        job_ids = [job.strip() for job in match.split(';') if job.strip()]
+
+        for parent_job_id in job_ids:
+            dependencies.append({
+                'job_id': job_id,
+                'job_id_parent': parent_job_id,
+                'timetable_id': "",  # Will be set by caller
+                'run_if_scheduled': "Y"
+            })
+
+    return dependencies
+
+def parse_pt_records(remarks, job_id):
+    """
+    Parse PT (NORMAL table) records from remarks field
+    Returns list of normal records
+    """
+    normal_records = []
+
+    # Look for "PT:" pattern - handle both single line and multi-line cases
+    lines = remarks.split('\n')
+
+    for line in lines:
+        line = line.strip()
+        if line.upper().startswith('PT:'):
+            # Remove "PT:" prefix
+            pt_content = line[3:].strip()
+
+            # Split by semicolon for multiple entries on same line
+            entries = [entry.strip() for entry in pt_content.split(';') if entry.strip()]
+
+            for entry in entries:
+                # Parse STEPXX RCXX pattern
+                step_rc_match = re.match(r'(STEP\d+)\s+(RC\d+)', entry, re.IGNORECASE)
+                if step_rc_match:
+                    stepname = step_rc_match.group(1).upper()
+                    rc = step_rc_match.group(2).upper()
+
+                    normal_records.append({
+                        'job_id': job_id,
+                        'stepname': stepname,
+                        'rc': rc
+                    })
+
+    return normal_records
+
+def parse_si_records(remarks, job_id):
+    """
+    Parse SI (SCHEDULING_INSTRUCTION_ADD table) records from remarks field
+    Returns list of scheduling instruction records
+    """
+    si_records = []
+    instruction_counter = 1
+
+    # Look for "SI:" pattern followed by content in brackets
+    pattern = r'SI:\s*\[([^\]]+)\]'
+    matches = re.findall(pattern, remarks, re.DOTALL | re.IGNORECASE)
+
+    for match in matches:
+        # Clean up the instruction text
+        instruction = match.strip()
+
+        si_records.append({
+            'job_id': job_id,
+            'add_instruction_id': str(instruction_counter),
+            'add_instruction': instruction
+        })
+
+        instruction_counter += 1
+
+    return si_records
+
+def insert_normal_records(cursor, normal_records):
+    """Insert NORMAL records"""
+    # Remove duplicates by converting to set of tuples and back
+    unique_records = []
+    seen = set()
+    for record in normal_records:
+        key = (record['job_id'], record['stepname'], record['rc'])
+        if key not in seen:
+            seen.add(key)
+            unique_records.append(record)
+
+    for record in unique_records:
+        cursor.execute("""
+            INSERT INTO NORMAL (job_id, stepname, rc)
+            VALUES (?, ?, ?)
+        """, (record['job_id'], record['stepname'], record['rc']))
+
+def insert_scheduling_instructions(cursor, scheduling_instructions):
+    """Insert SCHEDULING_INSTRUCTION_ADD records"""
+    for record in scheduling_instructions:
+        cursor.execute("""
+            INSERT INTO SCHEDULING_INSTRUCTION_ADD (job_id, add_instruction_id, add_instruction)
+            VALUES (?, ?, ?)
+        """, (record['job_id'], record['add_instruction_id'], record['add_instruction']))
+
 def process_job_timetables(job_id, job_records, series_id):
     """
     Process timetable records for a job_id, handling multiple schedules
+    Returns timetable records and all dependencies (regular + Run_if_scheduled)
     """
     frequency = job_id[3] if len(job_id) > 3 else ""
     timetable_records = []
+    all_dependencies = []
+    dependency_counter = 1
 
+    # Process timetable records (only for D, W, M)
     if frequency in ['D', 'W']:
         # Process daily/weekly jobs
         records_list = []
@@ -259,12 +388,12 @@ def process_job_timetables(job_id, job_records, series_id):
         # Sort records according to requirements
         sorted_records = sort_daily_weekly_records(records_list)
 
-        # Generate timetable_id and process records
+        # Generate timetable records
         all_days = set(['1', '2', '3', '4', '5', '6', '7'])
         used_days = set()
 
         for i, record in enumerate(sorted_records):
-            timetable_id = f"{frequency}{i + 1}"
+            timetable_record_id = f"{frequency}{i + 1}"
 
             if record['days_of_week'] == "":
                 # Empty days_of_week gets leftover days
@@ -280,7 +409,7 @@ def process_job_timetables(job_id, job_records, series_id):
             timetable_record = {
                 'job_id': job_id,
                 'series_id': series_id,
-                'timetable_id': timetable_id,
+                'timetable_id': timetable_record_id,
                 'days_of_week': days_of_week,
                 'run_time': record['start_time'],
                 'run_option': record['minutes_dependent']
@@ -308,12 +437,12 @@ def process_job_timetables(job_id, job_records, series_id):
         # Sort records according to requirements
         sorted_records = sort_monthly_records(records_list)
 
-        # Generate timetable_id and process records
+        # Generate timetable records
         all_months = set(['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'])
         used_months = set()
 
         for i, record in enumerate(sorted_records):
-            timetable_id = f"M{i + 1}"
+            timetable_record_id = f"M{i + 1}"
 
             if record['month'] == "":
                 # Empty month gets leftover months
@@ -329,7 +458,7 @@ def process_job_timetables(job_id, job_records, series_id):
             timetable_record = {
                 'job_id': job_id,
                 'series_id': series_id,
-                'timetable_id': timetable_id,
+                'timetable_id': timetable_record_id,
                 'day_of_month': record['day_of_month'],
                 'month': month,
                 'run_time': record['start_time'],
@@ -337,7 +466,33 @@ def process_job_timetables(job_id, job_records, series_id):
             }
             timetable_records.append(timetable_record)
 
-    return timetable_records
+    # Process dependencies for ALL frequencies (D, W, M, S, etc.)
+    for _, row in job_records.iterrows():
+        remarks = str(row['remarks']).strip() if pd.notna(row['remarks']) else ""
+        dependent_job_id = str(row['dependent_job_id']).strip() if pd.notna(row['dependent_job_id']) else ""
+
+        # Process regular dependencies
+        if dependent_job_id:
+            parent_job_ids = [parent_id.strip() for parent_id in dependent_job_id.split(DELIMITER) if parent_id.strip()]
+            for parent_job_id in parent_job_ids:
+                dependency_timetable_id = f"{frequency}{dependency_counter}"
+                all_dependencies.append({
+                    'job_id': job_id,
+                    'job_id_parent': parent_job_id,
+                    'timetable_id': dependency_timetable_id,
+                    'run_if_scheduled': ""
+                })
+                dependency_counter += 1
+
+        # Process Run_if_scheduled dependencies
+        run_if_scheduled_deps = parse_run_if_scheduled_from_remarks(remarks, job_id)
+        for dep in run_if_scheduled_deps:
+            dependency_timetable_id = f"{frequency}{dependency_counter}"
+            dep['timetable_id'] = dependency_timetable_id
+            all_dependencies.append(dep)
+            dependency_counter += 1
+
+    return timetable_records, all_dependencies
 
 def sort_daily_weekly_records(records_list):
     """
@@ -410,7 +565,8 @@ def process_job_dependencies(job_id, job_records):
                     dependencies.append({
                         'job_id': job_id,
                         'job_id_parent': parent_job_id,
-                        'timetable_id': timetable_id
+                        'timetable_id': timetable_id,
+                        'run_if_scheduled': ""  # Default empty for regular dependencies
                     })
 
     elif frequency == 'M':
@@ -434,7 +590,8 @@ def process_job_dependencies(job_id, job_records):
                     dependencies.append({
                         'job_id': job_id,
                         'job_id_parent': parent_job_id,
-                        'timetable_id': timetable_id
+                        'timetable_id': timetable_id,
+                        'run_if_scheduled': ""  # Default empty for regular dependencies
                     })
 
     return dependencies
@@ -574,34 +731,34 @@ def insert_job_dependencies(cursor, dependencies):
     unique_dependencies = []
     seen = set()
     for record in dependencies:
-        key = (record['job_id'], record['job_id_parent'], record['timetable_id'])
+        key = (record['job_id'], record['job_id_parent'], record['timetable_id'], record['run_if_scheduled'])
         if key not in seen:
             seen.add(key)
             unique_dependencies.append(record)
 
     for record in unique_dependencies:
         cursor.execute("""
-            INSERT INTO JOB_DEPENDENCY (job_id, job_id_parent, timetable_id)
-            VALUES (?, ?, ?)
-        """, (record['job_id'], record['job_id_parent'], record['timetable_id']))
+            INSERT INTO JOB_DEPENDENCY (job_id, job_id_parent, timetable_id, run_if_scheduled)
+            VALUES (?, ?, ?, ?)
+        """, (record['job_id'], record['job_id_parent'], record['timetable_id'], record['run_if_scheduled']))
 
 def insert_timetable_daily(cursor, timetable_records):
     """Insert TIMETABLE_DAILY records"""
     for record in timetable_records:
         cursor.execute("""
-            INSERT INTO TIMETABLE_DAILY (job_id, series_id, timetable_id, run_time, run_option, days_of_week)
+            INSERT INTO TIMETABLE_DAILY (job_id, series_id, timetable_id, days_of_week, run_time, run_option)
             VALUES (?, ?, ?, ?, ?, ?)
         """, (record['job_id'], record['series_id'], record['timetable_id'],
-              record['run_time'], record['run_option'], record['days_of_week']))
+              record['days_of_week'], record['run_time'], record['run_option']))
 
 def insert_timetable_weekly(cursor, timetable_records):
     """Insert TIMETABLE_WEEKLY records"""
     for record in timetable_records:
         cursor.execute("""
-            INSERT INTO TIMETABLE_WEEKLY (job_id, series_id, timetable_id, run_time, run_option, days_of_week)
+            INSERT INTO TIMETABLE_WEEKLY (job_id, series_id, timetable_id, days_of_week, run_time, run_option)
             VALUES (?, ?, ?, ?, ?, ?)
         """, (record['job_id'], record['series_id'], record['timetable_id'],
-              record['run_time'], record['run_option'], record['days_of_week']))
+              record['days_of_week'], record['run_time'], record['run_option']))
 
 def insert_timetable_monthly(cursor, timetable_records):
     """Insert TIMETABLE_MONTHLY records"""
@@ -610,8 +767,7 @@ def insert_timetable_monthly(cursor, timetable_records):
             INSERT INTO TIMETABLE_MONTHLY (job_id, series_id, timetable_id, day_of_month, month, run_time, run_option)
             VALUES (?, ?, ?, ?, ?, ?, ?)
         """, (record['job_id'], record['series_id'], record['timetable_id'],
-              record['day_of_month'], record['month'],
-              record['run_time'], record['run_option']))
+              record['day_of_month'], record['month'], record['run_time'], record['run_option']))
 
 if __name__ == "__main__":
     populate_data()

@@ -1,5 +1,30 @@
 Release Notes
 =============
+Date:   26/09/2025
+Name:   June
+Release:
+1. add acceptable pt, additional scheduling instruction, Run_if_scheduled=Y extracted from remarks field
+
+Changes:
+windows\populate_db_from_schedule.py
+ReleaseNotes.txt
+=============
+Date:   26/09/2025
+Name:   Zhi Hui
+Release:
+1. do not return successful import if there is validation error
+
+Changes:
+main.py
+=============
+Date:   26/09/2025
+Name:   June
+Release:
+1. repoint db path for ide
+
+Changes:
+windows\setup_start_files.py
+=============
 Date:   22/09/2025
 Name:   Kenneth
 Release:
@@ -76,6 +101,23 @@ Changes:
 calendar_view.py
 main.py
 
+=============
+Date:   09/09/2025
+Name:   Jeremy
+Release:
+1. adjusted the schedule instructions message
+
+Changes:
+main.py
+=============
+Date:   07/09/2025
+Name:   Min Yang
+Release:
+1. gantt chart generation
+
+Changes:
+windows\ganttchart.py
+main.py
 =============
 Date:   05/09/2025
 Name:   June
