@@ -25,7 +25,7 @@ def setup_files():
             except Exception as e:
                 print(f"❌ Could not create database: {e}")
         else:
-            print(f"✅ Using existing database at: {db_path}")  # Added this line for clarity
+            print(f"✅ Using existing database at: {db_path}")
 
         return {
             'database_path': str(db_path),
@@ -33,15 +33,17 @@ def setup_files():
         }
 
     else:
-        # DEVELOPMENT MODE: Use files/timetable.db directly
-        script_dir = Path(__file__).parent
-        db_path = script_dir / "files" / "timetable.db"
+        # DEVELOPMENT MODE: Use files/timetable.db at project root
+        # Get the project root directory (parent of windows folder)
+        script_dir = Path(__file__).parent  # This is the windows folder
+        project_root = script_dir.parent    # This is the project root
+        db_path = project_root / "files" / "timetable.db"
 
         # Make sure files folder exists
-        files_folder = script_dir / "files"
+        files_folder = project_root / "files"
         files_folder.mkdir(exist_ok=True)
 
-        print(f"✅ Using development database at: {db_path}")  # Added this line for clarity
+        print(f"✅ Using development database at: {db_path}")
 
         return {
             'database_path': str(db_path),
