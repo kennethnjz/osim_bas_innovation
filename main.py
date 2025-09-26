@@ -68,6 +68,7 @@ def import_function():
                 try:
                     df.to_excel(report_file_path, index=False)
                     messagebox.showinfo("Saved", f"Report saved to:\n{report_file_path}")
+                    return
                 except Exception as e:
                     messagebox.showerror("Save Failed", f"Could not save file:\n{str(e)}")
         else:
