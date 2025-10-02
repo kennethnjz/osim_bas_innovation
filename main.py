@@ -26,6 +26,7 @@ import timetable_generation
 import sqlite3
 import pandas as pd
 
+import bas_template_import
 import schedule_template_validation
 import populate_db_from_schedule
 import public_holiday
@@ -35,6 +36,19 @@ import subprocess
 
 
 localhost_url = "http://127.0.0.1:8056/"
+
+def convert_bas_template_function():
+    filename = filedialog.askopenfilename(initialdir = "/",
+                                          title = "Select the Import BAS Template",
+                                          filetypes=[("Excel files", "*.xlsx")])
+
+    file_type = Path(filename).suffix
+    print("File Type: " + file_type)
+
+    if not filename:
+        return
+    
+    bas_template_import.import_bas_template(file_type, filename)
 
 def import_function():
     filename = filedialog.askopenfilename(initialdir = "/",
@@ -518,6 +532,15 @@ om_frame.pack(padx=10, pady=10, side='left', fill='both', expand=True)
 #     font=('Consolas', 15)
 # )
 # filepath.pack(pady=10)
+# Convert BAS Template button
+tk.Button(
+    om_frame,
+    text='Convert BAS Template',
+    font=('Consolas', 12, 'bold'),
+    padx=30,
+    command=convert_bas_template_function,
+    width=20
+).pack(pady=10)
 
 # Import button
 tk.Button(
