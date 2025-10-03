@@ -70,7 +70,33 @@ def split_on_conjunctions(doc):
     clauses.append(nlp(clause))
     return clauses
 
-nlp = spacy.load("en_core_web_sm")
+def find_spacy_model_folder(base_path):
+    """
+    Recursively search for a folder containing 'config.cfg' starting from base_path.
+    Returns the full path if found, else None.
+    """
+    for root, dirs, files in os.walk(base_path):
+        if "config.cfg" in files:
+            return root
+    return None
+
+def resource_path(relative_path):
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
+
+model_folder = find_spacy_model_folder("en_core_web_sm")
+
+if model_folder:
+    print(f"Found model folder at: {model_folder}")
+    nlp = spacy.load(model_folder)
+else:
+    model_folder = resource_path("en_core_web_sm\en_core_web_sm-3.8.0")
+    nlp = spacy.load(model_folder)
+
 matcher = Matcher(nlp.vocab)
 
 # Pattern to capture job codes like LISD001 or RSSD058@
@@ -298,7 +324,7 @@ def import_bas_template(file_type, filename):
         lambda x: ", ".join(x) if isinstance(x, list) else x
     )
 
-    messagebox.showerror("Generated OSIM Template", "BAS templat has been converted to OSIM template!")
+    messagebox.showinfo("Generated OSIM Template", "BAS templat has been converted to OSIM template!")
     save = messagebox.askyesno("Save Template", "Do you want to save the Generated OSIM Template?")
 
     if save:

@@ -2,6 +2,7 @@ import subprocess
 import sys
 import os
 import tkinter as tk
+import spacy
 from tkinter import filedialog, messagebox
 
 def build_executable():
@@ -40,6 +41,8 @@ def build_executable():
         print(f"Building executable with database...")
         print(f"Output directory: {output_dir}")
 
+        model_path = spacy.util.get_package_path("en_core_web_sm")
+
         # Build command with database file included
         build_command = [
             "pyinstaller",
@@ -50,6 +53,8 @@ def build_executable():
             "--add-data", "windows;windows" if sys.platform == "win32" else "windows:windows",
             "--add-data", "inst;inst" if sys.platform == "win32" else "inst:inst",
             "--add-data", "full_calendar_component;full_calendar_component" if sys.platform == "win32" else "full_calendar_component:full_calendar_component",
+            "--add-data", "spacy;spacy" if sys.platform == "win32" else "spacy:spacy",
+            "--add-data", "en_core_web_sm;en_core_web_sm" if sys.platform == "win32" else "en_core_web_sm:en_core_web_sm",
             "--hidden-import", "tkinter.ttk",
             "--hidden-import", "dash",
             "--hidden-import", "plotly",
@@ -67,6 +72,8 @@ def build_executable():
             "--hidden-import", "dash_mantine_components",
             "--hidden-import", "dash_mantine_components._imports_",
             "--hidden-import", "dash_mantine_components.utils",
+            "--hidden-import", "spacy",
+            "--hidden-import", "en_core_web_sm",
             "--distpath", output_dir,
             "main.py"
         ]
