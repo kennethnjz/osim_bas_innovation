@@ -4,7 +4,7 @@ import tkinter as tk
 from tkinter import messagebox
 from tkinter import filedialog
 from pathlib import Path
-
+import threading 
 
 import os, sys
 
