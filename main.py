@@ -460,7 +460,7 @@ def export_om():
 
 m = tk.Tk()
 
-m.geometry('980x300')
+m.geometry('980x350')
 m.title('Welcome to OS Insight Manager (OSIM)')
 
 tk.Label(
