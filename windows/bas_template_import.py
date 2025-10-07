@@ -224,6 +224,7 @@ def assign_series_ids_by_title(df):
     return df
 
 def import_bas_template(file_type, filename):
+    ds = None
     try:
         if file_type == ".xlsx":
             ds = pd.read_excel(filename, sheet_name="OM")

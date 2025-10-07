@@ -1,5 +1,14 @@
 Release Notes
 =============
+Date:   07/10/2025
+Name:   Kenneth
+Release:
+1. Resized window to display button
+
+Changes:
+main.py
+ReleaseNotes.txt
+=============
 Date:   26/09/2025
 Name:   June
 Release:
