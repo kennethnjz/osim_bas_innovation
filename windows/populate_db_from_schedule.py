@@ -293,11 +293,16 @@ def parse_pt_records(remarks, job_id):
             entries = [entry.strip() for entry in pt_content.split(';') if entry.strip()]
 
             for entry in entries:
-                # Parse STEPXX RCXX pattern
-                step_rc_match = re.match(r'(STEP\d+)\s+(RC\d+)', entry, re.IGNORECASE)
+                # Parse STEPXX RCXX, STEPXX FLUSH, or STEPXX RC=anything pattern
+                step_rc_match = re.match(r'(STEP\d+)\s+(RC\d+|FLUSH|RC=(.+))', entry, re.IGNORECASE)
                 if step_rc_match:
                     stepname = step_rc_match.group(1).upper()
-                    rc = step_rc_match.group(2).upper()
+
+                    # Handle RC= pattern specially
+                    if step_rc_match.group(2).upper().startswith('RC='):
+                        rc = step_rc_match.group(3).strip()  # Get everything after RC=
+                    else:
+                        rc = step_rc_match.group(2).upper()  # RC## or FLUSH
 
                     normal_records.append({
                         'job_id': job_id,

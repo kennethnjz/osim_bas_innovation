@@ -1,6 +1,24 @@
 Release Notes
 =============
 Date:   07/10/2025
+Name:   June
+Release:
+1. accept PT FLUSH and RC=string
+
+Changes:
+windows\populate_db_from_schedule.py
+ReleaseNotes.txt
+=============
+Date:   07/10/2025
+Name:   Min Yang
+Release:
+1. Update grantt chart to have series and jobs details view
+
+Changes:
+main.py
+windows\ganttchart.py
+=============
+Date:   07/10/2025
 Name:   Kenneth
 Release:
 1. Resized window to display button
@@ -8,6 +26,35 @@ Release:
 Changes:
 main.py
 ReleaseNotes.txt
+=============
+Date:   07/10/2025
+Name:   Zhi Hui
+Release:
+1. fix ds unboundlocal error
+
+Changes:
+windows\bas_template_import.py
+=============
+Date:   03/10/2025
+Name:   Zhi Hui
+Release:
+1. update build to executable for bas template import
+
+Changes:
+build_exe.py
+en_core_web_sm (folder)
+spacy (folder)
+=============
+Date:   02/10/2025
+Name:   Zhi Hui
+Release:
+1. bas template import
+2. added spacy to requirement.txt
+
+Changes:
+main.py
+requirements.txt
+windows\bas_template_import.py
 =============
 Date:   26/09/2025
 Name:   June
