@@ -1,5 +1,19 @@
 Release Notes
 =============
+Date:   08/10/2025
+Name:   Kenneth
+Release:
+1. Added contingencies to remove the calendar view subprocess
+2. Fixed issue with calendar view not loading the latest generated timetable
+3. Changed DB directory to load from setup_start_files when opening gantt chart to prevent errors in executable
+
+Changes:
+calendar_view.py
+ganttchart.py
+main.py
+ReleaseNotes.txt
+
+=============
 Date:   07/10/2025
 Name:   Kenneth
 Release:

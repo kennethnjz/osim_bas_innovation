@@ -7,6 +7,7 @@ import os
 import webbrowser
 import threading
 
+import setup_start_files
 
 # ---------------------------
 # Database Path (relative)
@@ -16,7 +17,7 @@ db_path = os.path.join("windows", "files", "timetable.db")
 # ---------------------------
 # Read Data
 # ---------------------------
-conn = sqlite3.connect(db_path)
+conn = sqlite3.connect(setup_start_files.get_database_path())
 df = pd.read_sql_query("SELECT * FROM OPERATING_SCHEDULE", conn)
 conn.close()
 
