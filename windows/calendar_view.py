@@ -1,16 +1,29 @@
+import atexit
 import io
 import dash_summernote
 import sys
 import os
+import sqlite3
+import signal
+from flask import request
+import threading
+import time
+import psutil
+import setup_start_files
+
+db_path = ""
 
 # Handle imports for both development and executable modes
 if getattr(sys, 'frozen', False):
     # Executable mode - add bundled full_calendar_component directory to path
     sys.path.insert(0, os.path.join(sys._MEIPASS, 'full_calendar_component'))
     sys.path.insert(0, sys._MEIPASS)
+    sys.path.insert(0, os.path.join(sys._MEIPASS, 'windows'))
 else:
     # Development mode
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    sys.path.insert(0, 'windows/')
+
 
 import full_calendar_component as fcc
 from dash import *
@@ -38,6 +51,42 @@ today = datetime.now()
 
 # Format the date
 formatted_date = today.strftime("%Y-%m-%d")
+
+df = pd.DataFrame()
+
+def load_data_from_db():
+    try:
+
+        print(f"Calendar using database path: {db_path}")
+        conn = sqlite3.connect(db_path)
+        query = "SELECT series_id, job_id, start_run_datetime, end_run_datetime, dependent_job_id FROM TIMETABLE_DATETIME"
+        df_query = pd.read_sql_query(query, conn)
+        conn.close()
+
+        df_timetable = pd.DataFrame(columns=['start_date', 'start_time', 'end_date', 'end_time', 'event_name', 'event_color', 'event_context'])
+
+        for idx, row in df_query.iterrows():
+            start_date = datetime.strptime(row['start_run_datetime'], "%Y%m%d%H%M").date().strftime("%Y-%m-%d")
+            end_date = datetime.strptime(row['end_run_datetime'], "%Y%m%d%H%M").date().strftime("%Y-%m-%d")
+            start_time = datetime.strptime(row['start_run_datetime'], "%Y%m%d%H%M").time().strftime("%H:%M:00")
+            end_time = datetime.strptime(row['end_run_datetime'], "%Y%m%d%H%M").time().strftime("%H:%M:00")
+
+            new_row = {
+                'start_date': start_date,
+                'start_time': start_time,
+                'end_date': end_date,
+                'end_time': end_time,
+                'event_name': row["job_id"],
+                'event_color': "bg-gradient-secondary",
+                'event_context': f'''| Series ID | Job ID | Start Date & Time | End Date & Time | Dependent Job ID |
+                | :------: | :------: | :------: | :------: | :------: |
+                | {row["series_id"]} | {row["job_id"]} | {start_date} {start_time} | {end_date} {end_time} | {row["dependent_job_id"]} |'''
+            }
+            df_timetable.loc[len(df_timetable)] = new_row
+        return df_timetable
+    except Exception as e:
+        print(f"Error loading data: {e}")
+        return pd.DataFrame()
 
 app.layout = html.Div(
     [
@@ -323,6 +372,8 @@ app.layout = html.Div(
 def open_event_modal(n, clickedEvent, opened):
     ctx = callback_context
 
+    # print("button Clicked")
+
     if not ctx.triggered:
         raise PreventUpdate
     else:
@@ -415,8 +466,6 @@ def open_add_modal(dateClicked, close_clicks, opened):
 #    'event_context' : ["Job Description"]
 # })
 
-df = pd.DataFrame()
-
 @app.callback(
     Output("calendar", "events"),
     Output("add_modal", "opened", allow_duplicate=True),
@@ -445,6 +494,7 @@ def add_new_event(
     current_events,
 ):
     # print(type(current_events))
+    print(n)
     new_events = list()
     if n is None:
         # print("Avoiding update")
@@ -492,7 +542,7 @@ def add_new_event(
                 "start": start_date,
                 "end": end_date,
                 "className": event_color,
-                "context": event_context,
+                "extendedProps": {"context": event_context}
             })
 
             #new_events = new_events.append(new_event)
@@ -570,21 +620,100 @@ def display_output_html(value):
     # print(value)
     return value, value
 
+last_request_time = time.time()
+
+def monitor_requests():
+    """Monitor HTTP requests to detect tab activity"""
+    global last_request_time
+    while True:
+        time.sleep(10)
+        if time.time() - last_request_time > 300:  # 300 seconds timeout
+            print("No requests from tab, shutting down...")
+            cleanup()
+            break
+
+@app.server.before_request
+def track_requests():
+    """Track incoming requests"""
+    global last_request_time
+    last_request_time = time.time()
+
  # Function to open the browser
 def open_browser():
     # Check if the server is already running in a different process
     if not os.environ.get("WERKZEUG_RUN_MAIN"):
+        # print("Open Browser")
         # Open the default browser to the app's URL
         webbrowser.open_new("http://127.0.0.1:8056/")
+        # Start request monitoring thread
+        monitor_thread = threading.Thread(target=monitor_requests, daemon=True)
+        monitor_thread.start()
+
+@app.server.route('/shutdown', methods=['POST'])
+def shutdown():
+    # os.kill(os.getpid(), signal.SIGINT)
+
+    # This will only work with the development server
+    # For production deployments, you would need a different shutdown mechanism
+    # (e.g., using a process manager like Gunicorn with a graceful shutdown signal)
+    # func = request.environ.get('werkzeug.server.shutdown')
+    # if func is None:
+    #     raise RuntimeError('Not running with the Werkzeug Server')
+    # func()
+    # return 'Server shutting down...'
+
+    """Shutdown endpoint"""
+    print("Shutdown request received")
+    cleanup()
+    return 'Shutting down...'
+
+def cleanup():
+    """Cleanup function to ensure proper shutdown"""
+    print("Cleaning up calendar process...")
+    os._exit(0)
+
+def signal_handler(signum, frame):
+    """Handle termination signals"""
+    print(f"Received signal {signum}, shutting down...")
+    cleanup()
 
 if __name__ == "__main__":
+    # Register cleanup handlers
+    atexit.register(cleanup)
+    signal.signal(signal.SIGTERM, signal_handler)
+    signal.signal(signal.SIGINT, signal_handler)
     if len(sys.argv) > 1:
-        # print(f"Arguments received: {sys.argv[1]}")
-        df_new = pd.read_json(io.StringIO(sys.argv[1]), convert_dates=False)
-        df = pd.concat([df,df_new], ignore_index=True)
-        # print(df.to_json())
+        db_path = sys.argv[1]
     else:
+        db_path = setup_start_files.get_database_path()
         print("No arguments received.")
-    # Schedule the browser to open 1 second after the server starts
-    Timer(1, open_browser).start()
-    app.run(debug=True, port=8056)
+
+    try:
+        # Load initial data from database
+        df = load_data_from_db()
+
+        # Schedule the browser to open 1 second after the server starts
+        Timer(1, open_browser).start()
+        app.run(debug=False, port=8056, host='127.0.0.1', use_reloader=False)
+    except KeyboardInterrupt:
+        print("KeyboardInterrupt received, shutting down...")
+        cleanup()
+    except Exception as e:
+        print(f"Error in calendar app: {e}")
+        cleanup()
+    # # Load initial data from database
+    # df = load_data_from_db()
+    # # Schedule the browser to open 1 second after the server starts
+    # Timer(1, open_browser).start()
+    # app.run(debug=False, port=8056)
+
+    # if len(sys.argv) > 1:
+    #     # print(f"Arguments received: {sys.argv[1]}")
+    #     df_new = pd.read_json(io.StringIO(sys.argv[1]), convert_dates=False)
+    #     df = pd.concat([df,df_new], ignore_index=True)
+    #     print(df.to_json())
+    # else:
+    #     print("No arguments received.")
+    # app.run(debug=True, port=8056)
+    # # Schedule the browser to open 1 second after the server starts
+    # Timer(1, open_browser).start()

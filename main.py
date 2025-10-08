@@ -4,7 +4,9 @@ import tkinter as tk
 from tkinter import messagebox
 from tkinter import filedialog
 from pathlib import Path
-import threading 
+import threading
+
+import requests
 
 import os, sys
 
@@ -210,96 +212,111 @@ def import_public_holiday_function():
         messagebox.showerror('Import Failed', f'An error occurred: {e}')
         print(f"An error occurred: {e}")
 
+browser_process = None
+
 # Open new browser for calendar view
 def open_calendar():
-
+    global browser_process
     try:
-        # Load DB
-        conn = sqlite3.connect(database_path) # r'files/timetable.db'
-        # Define all columns you want to select and export
-        db_cols = [
-            "series_id",
-            "job_id",
-            "start_run_datetime",
-            "end_run_datetime",
-            "dependent_job_id",
-        ]
-        # Only select columns that exist in the DB
-        query_cols = [col for col in db_cols]
-        query = f"SELECT {', '.join(query_cols)} FROM TIMETABLE_DATETIME"
-        df_query = pd.read_sql_query(query, conn)
-        conn.close()
-        if df_query.empty:
-            messagebox.showwarning('No Data', 'No data found in TIMETABLE_DATETIME!')
-            return
-
-        columns = [
-            'start_date' ,
-            'start_time' ,
-            'end_date' ,
-            'end_time' ,
-            'event_name' ,
-            'event_color' ,
-            'event_context'
-        ]
-
-        # Create an empty DataFrame with the specified columns
-        df_timetable = pd.DataFrame(columns=columns)
-
-        # Loop to insert new row of dataframe to be passed to subprocess
-        for idx, row in df_query.iterrows():
-            start_date = datetime.strptime(row['start_run_datetime'], "%Y%m%d%H%M").date().strftime("%Y-%m-%d")
-            end_date = datetime.strptime(row['end_run_datetime'], "%Y%m%d%H%M").date().strftime("%Y-%m-%d")
-            start_time = datetime.strptime(row['start_run_datetime'], "%Y%m%d%H%M").time().strftime("%H:%M:00")
-            end_time = datetime.strptime(row['end_run_datetime'], "%Y%m%d%H%M").time().strftime("%H:%M:00")
-
-            # print(start_date)
-            # print(end_date)
-
-            new_row = {
-                'start_date' : start_date,
-                'start_time' : start_time,
-                'end_date' : end_date,
-                'end_time' : end_time,
-                'event_name' : row["job_id"],
-                'event_color' : "bg-gradient-secondary",
-                'event_context' : f'''| Series ID | Job ID | Start Date & Time | End Date & Time | Dependent Job ID |
-                | :------: | :------: | :------: | :------: | :------: |
-                | {row["series_id"]} | {row["job_id"]} | {start_date} {start_time} | {end_date} {end_time} | {row["dependent_job_id"]} |'''
-                # 'event_context' : f'<table class="table table-bordered" style="font-size: 1rem;"><tbody><tr><td><h6>Series ID</h6></td><td><h6>Job ID</h6></td><td><h6>Start Date &amp; Time</h6></td><td><h6>End Date &amp; Time</h6></td><td><h6>Dependent Job ID</h6></td></tr><tr><td>{row["series_id"]}</td><td>{row["job_id"]}</td><td>value3</td><td>value4</td><td>{row["dependent_job_id"]}</td></tr></tbody></table><p><br></p>'
-            }
-            df_timetable.loc[len(df_timetable)] = new_row
-
-        # print(df_timetable.to_json(date_format="ISO"))
-
-        # Test Dataframe for testing
-        # df_test = pd.DataFrame({
-        #     'start_date' : ["2025-09-08"],
-        #     'start_time' : ["19:56:00"],
-        #     'end_date' : ["2025-09-02"],
-        #     'end_time' : ["21:56:00"],
-        #     'event_name' : ["LISD056"],
-        #     'event_color' : ["bg-gradient-primary"],
-        #     'event_context' : ["Job Description"]
-        # })
-
-        # Open calendar subprocess
+        # Open calendar subprocess - no need to pass data since calendar handles its own DB queries
         if getattr(sys, 'frozen', False):
             # Executable mode - use bundled calendar_view.py
             calendar_script = os.path.join(sys._MEIPASS, 'windows', 'calendar_view.py')
         else:
             # Development mode
             calendar_script = "windows\calendar_view.py"
-        
-        subprocess.Popen(["python", calendar_script, df_timetable.to_json(date_format="ISO")])
-    except sqlite3.Error as e:
-        print(f"Error querying table: {e}")
-        if 'conn' in locals():
-            conn.rollback() # Rollback if an error occurs
+
+        browser_process = subprocess.Popen(["python", calendar_script, database_path])
     except Exception as e:
         messagebox.showerror('Calendar Generation Failed', f'An error occurred: {e}')
-    finally:
-        conn.close()
+
+    # try:
+    #     # Load DB
+    #     conn = sqlite3.connect(database_path) # r'files/timetable.db'
+    #     # Define all columns you want to select and export
+    #     db_cols = [
+    #         "series_id",
+    #         "job_id",
+    #         "start_run_datetime",
+    #         "end_run_datetime",
+    #         "dependent_job_id",
+    #     ]
+    #     # Only select columns that exist in the DB
+    #     query_cols = [col for col in db_cols]
+    #     query = f"SELECT {', '.join(query_cols)} FROM TIMETABLE_DATETIME"
+    #     df_query = pd.read_sql_query(query, conn)
+    #     conn.close()
+    #     if df_query.empty:
+    #         messagebox.showwarning('No Data', 'No data found in TIMETABLE_DATETIME!')
+    #         return
+    #
+    #     columns = [
+    #         'start_date' ,
+    #         'start_time' ,
+    #         'end_date' ,
+    #         'end_time' ,
+    #         'event_name' ,
+    #         'event_color' ,
+    #         'event_context'
+    #     ]
+    #
+    #     # Create an empty DataFrame with the specified columns
+    #     df_timetable = pd.DataFrame(columns=columns)
+    #
+    #     # Loop to insert new row of dataframe to be passed to subprocess
+    #     for idx, row in df_query.iterrows():
+    #         start_date = datetime.strptime(row['start_run_datetime'], "%Y%m%d%H%M").date().strftime("%Y-%m-%d")
+    #         end_date = datetime.strptime(row['end_run_datetime'], "%Y%m%d%H%M").date().strftime("%Y-%m-%d")
+    #         start_time = datetime.strptime(row['start_run_datetime'], "%Y%m%d%H%M").time().strftime("%H:%M:00")
+    #         end_time = datetime.strptime(row['end_run_datetime'], "%Y%m%d%H%M").time().strftime("%H:%M:00")
+    #
+    #         # print(start_date)
+    #         # print(end_date)
+    #
+    #         new_row = {
+    #             'start_date' : start_date,
+    #             'start_time' : start_time,
+    #             'end_date' : end_date,
+    #             'end_time' : end_time,
+    #             'event_name' : row["job_id"],
+    #             'event_color' : "bg-gradient-secondary",
+    #             'event_context' : f'''| Series ID | Job ID | Start Date & Time | End Date & Time | Dependent Job ID |
+    #             | :------: | :------: | :------: | :------: | :------: |
+    #             | {row["series_id"]} | {row["job_id"]} | {start_date} {start_time} | {end_date} {end_time} | {row["dependent_job_id"]} |'''
+    #             # 'event_context' : f'<table class="table table-bordered" style="font-size: 1rem;"><tbody><tr><td><h6>Series ID</h6></td><td><h6>Job ID</h6></td><td><h6>Start Date &amp; Time</h6></td><td><h6>End Date &amp; Time</h6></td><td><h6>Dependent Job ID</h6></td></tr><tr><td>{row["series_id"]}</td><td>{row["job_id"]}</td><td>value3</td><td>value4</td><td>{row["dependent_job_id"]}</td></tr></tbody></table><p><br></p>'
+    #         }
+    #         df_timetable.loc[len(df_timetable)] = new_row
+    #
+    #     # print(df_timetable.to_json(date_format="ISO"))
+    #
+    #     # Test Dataframe for testing
+    #     # df_test = pd.DataFrame({
+    #     #     'start_date' : ["2025-09-08"],
+    #     #     'start_time' : ["19:56:00"],
+    #     #     'end_date' : ["2025-09-02"],
+    #     #     'end_time' : ["21:56:00"],
+    #     #     'event_name' : ["LISD056"],
+    #     #     'event_color' : ["bg-gradient-primary"],
+    #     #     'event_context' : ["Job Description"]
+    #     # })
+    #
+    #     # Open calendar subprocess
+    #     if getattr(sys, 'frozen', False):
+    #         # Executable mode - use bundled calendar_view.py
+    #         calendar_script = os.path.join(sys._MEIPASS, 'windows', 'calendar_view.py')
+    #     else:
+    #         # Development mode
+    #         calendar_script = "windows\calendar_view.py"
+    #
+    #     subprocess.Popen(["python", calendar_script, df_timetable.to_json(date_format="ISO")])
+    # except sqlite3.Error as e:
+    #     print(f"Error querying table: {e}")
+    #     if 'conn' in locals():
+    #         conn.rollback() # Rollback if an error occurs
+    # except Exception as e:
+    #     messagebox.showerror('Calendar Generation Failed', f'An error occurred: {e}')
+    # finally:
+    #     conn.close()
 
 
 
@@ -619,13 +636,41 @@ tk.Button(
     width=20
 ).pack(pady=10)
 
+def on_closing():
+    global browser_process
+    # Try to shutdown calendar server gracefully
+    try:
+        requests.post('http://127.0.0.1:8056/shutdown', timeout=2)
+    except:
+        pass  # Ignore if server is already down
 
+    if browser_process and browser_process.poll() is None:  # Check if the subprocess is still running
+        print(f"Terminating subprocess with PID: {browser_process.pid}")
+        browser_process.terminate()  # Sends SIGTERM (graceful termination request)
+        try:
+            browser_process.wait(timeout=5) # Wait for the process to terminate, with a timeout
+        except subprocess.TimeoutExpired:
+            print(f"Subprocess {browser_process.pid} did not terminate gracefully, attempting kill.")
+            browser_process.kill()
+            browser_process.wait()  # Wait for kill to complete
+    m.quit() # Close the Tkinter window
+    sys.exit(0)  # Ensure process exits
+
+m.protocol("WM_DELETE_WINDOW", on_closing)
 
 try:
     m.mainloop()
 except KeyboardInterrupt:
     print("KeyboardInterrupt detected. Exiting Tkinter mainloop.")
-    m.quit()  # or root.destroy() depending on desired cleanup
+    if browser_process and browser_process.poll() is None:
+        browser_process.terminate()
+        browser_process.wait()
+    m.destroy()
+    sys.exit(0)
 except Exception as e:
     print(f"An unexpected error occurred: {e}")
+    if browser_process and browser_process.poll() is None:
+        browser_process.terminate()
+        browser_process.wait()
     m.destroy()
+    sys.exit(1)
