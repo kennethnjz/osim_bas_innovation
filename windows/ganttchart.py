@@ -10,192 +10,155 @@ import threading
 import setup_start_files
 
 # ---------------------------
-# Database Path (relative)
+# Database Path
 # ---------------------------
-db_path = os.path.join("windows", "files", "timetable.db")
+DB_PATH = "windows/files/timetable.db"
 
 # ---------------------------
 # Read Data
 # ---------------------------
-conn = sqlite3.connect(setup_start_files.get_database_path())
-df = pd.read_sql_query("SELECT * FROM OPERATING_SCHEDULE", conn)
+conn = sqlite3.connect(DB_PATH)
+df = pd.read_sql("SELECT * FROM timetable_datetime", conn)
 conn.close()
 
 # ---------------------------
-# Preprocess
+# Data Preparation
 # ---------------------------
 
-# --- Convert and clean time columns ---
-df['start_run_date'] = pd.to_datetime(df['start_run_date'], errors='coerce')
-df['end_run_date'] = pd.to_datetime(df['end_run_date'], errors='coerce')
-df['minutes_dependent_job_id'] = pd.to_numeric(df['minutes_dependent_job_id'], errors='coerce').fillna(0)
+# Convert datetime strings (e.g. '202510181900') to actual datetime
+df["start_run_datetime"] = pd.to_datetime(df["start_run_datetime"], format="%Y%m%d%H%M")
+df["end_run_datetime"] = pd.to_datetime(df["end_run_datetime"], format="%Y%m%d%H%M")
 
-# --- Helper function to compute times recursively ---
-def resolve_job_time(job_id, visited=None):
-    if visited is None:
-        visited = set()
-
-    # Prevent circular dependencies
-    if job_id in visited:
-        return
-    visited.add(job_id)
-
-    job = df.loc[df['job_id'] == job_id]
-    if job.empty:
-        return
-
-    idx = job.index[0]
-    start = job.at[idx, 'start_run_date']
-    end = job.at[idx, 'end_run_date']
-
-    # If this job already has start and end, nothing to do
-    if pd.notna(start) and pd.notna(end):
-        return
-
-    dep_job_id = job.at[idx, 'dependent_job_id']
-    offset_min = job.at[idx, 'minutes_dependent_job_id']
-
-    # If job depends on another job
-    if dep_job_id:
-        resolve_job_time(dep_job_id, visited)  # resolve dependency first
-        dep_job = df.loc[df['job_id'] == dep_job_id]
-        if not dep_job.empty and pd.notna(dep_job.iloc[0]['end_run_date']):
-            dep_end = dep_job.iloc[0]['end_run_date']
-            start_time = dep_end + timedelta(minutes=offset_min)
-            end_time = start_time + timedelta(minutes=1)  # assume 1 min duration if not defined
-            df.at[idx, 'start_run_date'] = start_time
-            df.at[idx, 'end_run_date'] = end_time
-
-    # If still missing end but has start, estimate short run
-    elif pd.notna(start) and pd.isna(end):
-        df.at[idx, 'end_run_date'] = start + timedelta(minutes=1)
-
-# --- Apply dependency resolution to all jobs ---
-for job_id in df['job_id']:
-    resolve_job_time(job_id)
-
-series_df = df.groupby('series_id').agg(
-    start_run_date=('start_run_date', 'min'),
-    end_run_date=('end_run_date', 'max')
-).reset_index()
-
+# Extract run_date (day of each series run)
+df["run_date"] = df["start_run_datetime"].dt.date
 
 # ---------------------------
-# Dash App Layout
+# Build Series-Day summary (for zoom-out)
 # ---------------------------
+summary = (
+    df.groupby(["series_id", "run_date"])
+    .agg(
+        start_run_datetime=("start_run_datetime", "min"),
+        end_run_datetime=("end_run_datetime", "max"),
+    )
+    .reset_index()
+)
+
+# Create a unique series-day label
+summary["series_day"] = summary["series_id"] + "_" + summary["run_date"].astype(str)
+
+# ---------------------------
+# Dash App
+# ---------------------------
+
 app = Dash(__name__)
+app.title = "Timetable Gantt Viewer"
 
-app.layout = html.Div([
-    html.H2("Operating Schedule Gantt Chart"),
-    html.Label("Select View:"),
-    dcc.RadioItems(
-        id='view-toggle',
-        options=[
-            {'label': 'Zoom Out (Series View)', 'value': 'series'},
-            {'label': 'Zoom In (Job View)', 'value': 'job'}
-        ],
-        value='series',
-        inline=True
-    ),
-    html.Label("Select Series:"),
-    dcc.Dropdown(
-        id='series-dropdown',
-        options=[{'label': s, 'value': s} for s in sorted(df['series_id'].dropna().unique())],
-        value='LISSR001',
-        clearable=False
-    ),
-    dcc.Graph(id='gantt-chart')
-])
+app.layout = html.Div(
+    [
+        html.H2("Weekly Gantt View (Zoom Out)"),
+        html.P("Click on a bar below to zoom in to that series-day view."),
+
+        dcc.Graph(id="weekly_gantt"),
+
+        html.Hr(),
+        html.H3("Zoom-In Job Timeline"),
+        dcc.Graph(id="job_gantt"),
+
+    ],
+    style={"maxWidth": "90%", "margin": "auto"}
+)
+
 
 # ---------------------------
-# Callbacks
+# Weekly (Zoom-Out) Gantt Chart
 # ---------------------------
 @app.callback(
-    Output('gantt-chart', 'figure'),
-    Input('view-toggle', 'value'),
-    Input('series-dropdown', 'value')
+    Output("weekly_gantt", "figure"),
+    Input("weekly_gantt", "id")  # dummy trigger to render once
 )
-def update_chart(view, series_id):
-    if view == 'series':
-        # ✅ Show all series, sorted by start date
-        filtered = series_df.sort_values("start_run_date")
+def render_weekly(_):
+    fig = px.timeline(
+        summary,
+        x_start="start_run_datetime",
+        x_end="end_run_datetime",
+        y="series_id",
+        color="series_day",
+        hover_data=["series_day"],
+        title="Series Overview by Day",
+    )
 
-        fig = px.timeline(
-            filtered,
-            x_start="start_run_date",
-            x_end="end_run_date",
-            y="series_id",
-            color="series_id",
-            title="Zoomed Out: All Series Overview",
-            hover_data={"start_run_date": True, "end_run_date": True}
-        )
+    fig.update_yaxes(autorange="reversed")  # Gantt-style (top-down)
+    fig.update_layout(
+        height=500,
+        xaxis_title="Date",
+        yaxis_title="Series ID",
+        legend_title="Run Date",
+    )
+    return fig
 
-        # ✅ Reverse y-axis so earliest series is on top
-        fig.update_yaxes(autorange="reversed")
 
-        # ✅ Focus x-axis range around data (avoid huge empty gaps)
-        min_date = filtered["start_run_date"].min()
-        max_date = filtered["end_run_date"].max()
-        date_padding = (max_date - min_date) * 0.05  # 5% padding
-        fig.update_xaxes(range=[min_date - date_padding, max_date + date_padding])
+# ---------------------------
+# Zoom-In Job View (based on bar click)
+# ---------------------------
+@app.callback(
+    Output("job_gantt", "figure"),
+    Input("weekly_gantt", "clickData"),
+)
+def zoom_in(clickData):
+    if not clickData:
+        # Default message
+        return px.scatter(title="Click on a bar above to zoom in to job-level view.")
 
-        # ✅ Make bars thicker and more visible
-        fig.update_traces(marker_line_width=1.2)
-        fig.update_layout(
-            xaxis_title="Time",
-            yaxis_title="Series ID",
-            height=700,
-            bargap=0.4,
-            template="plotly_white",
-            title_x=0.5
-        )
+    # Extract the clicked point
+    point = clickData["points"][0]
+    series_id = point["y"]
+    run_date = point["customdata"][0].split("_")[-1] if "customdata" in point else None
 
-    else:
-        # Zoom In → show individual jobs for selected series
-        filtered = df[df['series_id'] == series_id]
-        fig = px.timeline(
-            filtered,
-            x_start="start_run_date",
-            x_end="end_run_date",
-            y="job_id",
-            color="job_id",
-            title=f"Zoomed In: Jobs in {series_id}",
-            hover_data=["job_desc", "dependent_job_id", "minutes_dependent_job_id"]
-        )
-        fig.update_yaxes(autorange="reversed")
-        fig.update_layout(
-            xaxis_title="Time",
-            yaxis_title="Job ID",
-            height=700,
-            template="plotly_white",
-            title_x=0.5
-        )
+    # Fallback: parse date from hover or x start
+    if not run_date:
+        start_str = point.get("x")
+        if start_str:
+            run_date = str(pd.to_datetime(start_str).date())
+
+    # Filter original dataframe
+    df_filtered = df[
+        (df["series_id"] == series_id) &
+        (df["run_date"].astype(str) == run_date)
+    ].sort_values("start_run_datetime")
+
+    if df_filtered.empty:
+        return px.scatter(title=f"No data for {series_id} on {run_date}")
+
+    fig = px.timeline(
+        df_filtered,
+        x_start="start_run_datetime",
+        x_end="end_run_datetime",
+        y="job_id",
+        color="job_id",
+        title=f"Job Timeline: {series_id} on {run_date}",
+    )
+
+    fig.update_yaxes(autorange="reversed")
+    fig.update_layout(
+        height=500,
+        xaxis_title="Time of Day",
+        yaxis_title="Job ID",
+        showlegend=False,
+    )
 
     return fig
 
+# ---------------------------
+# Run Dash
+# ---------------------------
 if __name__ == "__main__":
-    import webbrowser
-    import threading
-
-    # Define a function to open browser after a small delay
     def open_browser():
         webbrowser.open_new("http://127.0.0.1:8050")
-
-    # Run the browser open in a background thread (so it doesn’t block)
-    threading.Timer(1.0, open_browser).start()
-
-    # Start the Dash server (Dash 3+ syntax)
-    app.run(debug=True)
-
-
-# 🧩 Wrap server start in a callable function
-def show_gantt_chart():
-    """Launch the Dash Gantt Chart in a web browser."""
-    def open_browser():
-        webbrowser.open_new("http://127.0.0.1:8050")
-
-    # Launch browser shortly after Dash starts
     threading.Timer(1, open_browser).start()
+    app.run(debug=True, use_reloader=False)
 
-    # Run Dash (in blocking mode)
+# Optional callable
+def show_gantt_chart():
+    threading.Timer(1, lambda: webbrowser.open_new("http://127.0.0.1:8050")).start()
     app.run(debug=False, use_reloader=False)
