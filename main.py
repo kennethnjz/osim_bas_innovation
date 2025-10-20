@@ -224,7 +224,7 @@ def open_calendar():
             calendar_script = os.path.join(sys._MEIPASS, 'windows', 'calendar_view.py')
         else:
             # Development mode
-            calendar_script = "windows\calendar_view.py"
+            calendar_script = "windows\\calendar_view.py"
 
         browser_process = subprocess.Popen(["python", calendar_script, database_path])
     except Exception as e:

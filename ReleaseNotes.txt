@@ -1,5 +1,19 @@
 Release Notes
 =============
+Date:   20/10/2025
+Name:   Kenneth
+Release:
+1. Changed DB directory to load from setup_start_files when opening gantt chart to prevent errors in executable
+2. Added escape character for backslash when loading calendar view script
+3. Update requirements.txt versioning and missing libraries
+
+Changes:
+ganttchart.py
+main.py
+requirements.txt
+timetable.db
+
+=============
 Date:   08/10/2025
 Name:   Kenneth
 Release:

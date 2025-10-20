@@ -17,7 +17,7 @@ DB_PATH = "windows/files/timetable.db"
 # ---------------------------
 # Read Data
 # ---------------------------
-conn = sqlite3.connect(DB_PATH)
+conn = sqlite3.connect(setup_start_files.get_database_path())
 df = pd.read_sql("SELECT * FROM timetable_datetime", conn)
 conn.close()
 
