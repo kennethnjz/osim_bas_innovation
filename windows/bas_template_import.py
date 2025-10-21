@@ -376,6 +376,12 @@ def import_bas_template(file_type, filename):
     newDs["Schedule Type Integer (1) Options: Daily (1), Weekly (2)"] = np.where(newDs['Job ID String (8)'].str[3] == 'D', 1,  2)
     newDs['Days of Week String (Integer, semi-colon delimited) Options: Monday (1) - Sunday (7)'] = np.where(newDs["Schedule Type Integer (1) Options: Daily (1), Weekly (2)"] == 2, newDs["Days of Week String (Integer, semi-colon delimited) Options: Monday (1) - Sunday (7)"], '')
     newDs["Start Time /Integer (4) Options: 0000 - 2359"] = newDs["Start Time /Integer (4) Options: 0000 - 2359"].apply(convert_to_24hr_number)
+    col = "Minutes after Successful Dependent Job ID Integer (2) Options: 0 - 30"
+    # Replace NaN with '0'
+    newDs[col] = newDs[col].fillna('0')
+    # Replace empty strings with '0'
+    newDs[col] = newDs[col].replace('', '0')
+
     
 
 
