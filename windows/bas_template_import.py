@@ -223,6 +223,58 @@ def assign_series_ids_by_title(df):
 
     return df
 
+
+def convert_to_24hr_number(time_str):
+    if not time_str or time_str.strip() == '':
+        return None  # or 0, or np.nan depending on your preference
+    try:
+        if ':' in time_str:
+            t = datetime.strptime(time_str.strip(), "%I:%M%p")
+        else:
+            t = datetime.strptime(time_str.strip(), "%I%p")
+        return int(t.strftime("%H%M"))
+    except ValueError:
+        # Handle invalid formats
+        return None
+
+def days_to_int(day_str):
+    """
+    Converts a day description to semicolon-delimited integers.
+    Handles single, multiple, and range days.
+    """
+    day_map = {'Mon': '1','Tue': '2','Wed': '3','Thu': '4','Fri': '5','Sat': '6','Sun': '7'}
+    
+    # Remove parentheses and "Every"
+    clean_str = re.sub(r'\(.*?\)', '', day_str)
+    clean_str = clean_str.replace('Every', '').strip()
+    
+    # Handle range like "Mon - Sun"
+    if '-' in clean_str:
+        parts = [p.strip()[:3] for p in clean_str.split('-')]
+        start = day_map.get(parts[0])
+        end = day_map.get(parts[1])
+        if start and end:
+            start = int(start)
+            end = int(end)
+            if start <= end:
+                nums = list(map(str, range(start, end + 1)))
+            else:  # wrap around week
+                nums = list(map(str, list(range(start, 8)) + list(range(1, end + 1))))
+            return ';'.join(nums)
+    
+    # Otherwise, split by comma or '&'
+    parts = re.split(r',|&', clean_str)
+    nums = []
+    for p in parts:
+        day_abbr = p.strip()[:3]
+        if day_abbr in day_map:
+            nums.append(day_map[day_abbr])
+    
+    return ';'.join(nums)
+
+
+
+
 def import_bas_template(file_type, filename):
     ds = None
     try:
@@ -281,6 +333,8 @@ def import_bas_template(file_type, filename):
     newDs = apply_spacy_parsing(newDs, source_col="Scheduling Instructions")
     newDs = assign_series_ids_by_title(newDs)
 
+    newDs['Days of Week'] = newDs['Scheduling Instructions'].apply(days_to_int)
+
     mapping = {
     "Function of SRS": "SRS Function String (200)",
     "Series ID": "Series ID String (10)",
@@ -303,17 +357,34 @@ def import_bas_template(file_type, filename):
     "Day Number": "Day Number Integer (2) Options: 1 - 20 for Monthly(Day of Month) & Quarterly (Day of Quarter) & , Yearly (Day of Month), 1 - 7 for Monthly (Final X Day of Month) & Yearly (Final X Day of ",
     "Yearly Run Date": "Yearly Run Date (YYYYMMDD) Date/Integer (8)",
     "Days of Week": "Days of Week String (Integer, semi-colon delimited) Options: Monday (1) - Sunday (7)",
-    "exclude_holiday": "Exclude Public Holidays Boolean",
+    "exclude_holiday": "Exclude Public Holidays Booleanto",
     "start_run_time": "Start Time /Integer (4) Options: 0000 - 2359",
     "dependency_jobs": "Dependent Job ID String (8)",
     "dependency_delay": "Minutes after Successful Dependent Job ID Integer (2) Options: 0 - 30"
     }
+    
 
     # Assuming ds is your DataFrame
     # Rename columns that are in the mapping keys
     newDs = newDs.rename(columns={k: v for k, v in mapping.items() if k in newDs.columns})
+    
+    newDs["Dependent Job ID String (8)"] = newDs["Dependent Job ID String (8)"].apply(
+        lambda x: ", ".join(x) if isinstance(x, list) else x
+    )
+
+    newDs['By Schedule/By Dependency Option Integer (1) Options: By Schedule (1), By Dependency (2)'] = np.where(newDs['Dependent Job ID String (8)'].notna() & (newDs['Dependent Job ID String (8)'] != ''), 2,  1)
+    newDs["Schedule Type Integer (1) Options: Daily (1), Weekly (2)"] = np.where(newDs['Job ID String (8)'].str[3] == 'D', 1,  2)
+    newDs['Days of Week String (Integer, semi-colon delimited) Options: Monday (1) - Sunday (7)'] = np.where(newDs["Schedule Type Integer (1) Options: Daily (1), Weekly (2)"] == 2, newDs["Days of Week String (Integer, semi-colon delimited) Options: Monday (1) - Sunday (7)"], '')
+    newDs["Start Time /Integer (4) Options: 0000 - 2359"] = newDs["Start Time /Integer (4) Options: 0000 - 2359"].apply(convert_to_24hr_number)
+    
+
+
     # Define desired order from mapping values
     desired_col_order = list(mapping.values())
+
+    for col in desired_col_order:
+        if col not in newDs.columns:
+            newDs[col] = ''
 
     # Keep only columns present in newDs
     cols_in_df = [col for col in desired_col_order if col in newDs.columns]
@@ -321,11 +392,7 @@ def import_bas_template(file_type, filename):
     # Reorder columns
     newDs = newDs[cols_in_df]
 
-    newDs["Dependent Job ID String (8)"] = newDs["Dependent Job ID String (8)"].apply(
-        lambda x: ", ".join(x) if isinstance(x, list) else x
-    )
-
-    messagebox.showinfo("Generated OSIM Template", "BAS templat has been converted to OSIM template!")
+    messagebox.showinfo("Generated OSIM Template", "BAS template has been converted to OSIM template!")
     save = messagebox.askyesno("Save Template", "Do you want to save the Generated OSIM Template?")
 
     if save:
@@ -333,7 +400,7 @@ def import_bas_template(file_type, filename):
 
         if report_file_path:
             try:
-                newDs.to_excel(report_file_path, index=False)
+                newDs.to_excel(report_file_path, index=False, sheet_name='Template')
                 messagebox.showinfo("Saved", f"Template saved to:\n{report_file_path}")
                 return
             except Exception as e:
