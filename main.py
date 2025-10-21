@@ -540,7 +540,7 @@ link_ph.place(relx=0.8, rely=0.125)
 link_ph.bind("<Button-1>", lambda e:
 download_blank_template("PH"))
 
-om_frame = tk.LabelFrame(m, text="Operating Manual", padx=10, pady=10)
+om_frame = tk.LabelFrame(m, text="Operating Manual (OM) Initial Setup", padx=10, pady=10)
 om_frame.pack(padx=10, pady=10, side='left', fill='both', expand=True)
 
 # filepath = tk.Label(
@@ -552,7 +552,7 @@ om_frame.pack(padx=10, pady=10, side='left', fill='both', expand=True)
 # Convert BAS Template button
 tk.Button(
     om_frame,
-    text='Convert BAS Template',
+    text='Convert BAS OM',
     font=('Consolas', 12, 'bold'),
     padx=30,
     command=convert_bas_template_function,
@@ -562,30 +562,30 @@ tk.Button(
 # Import button
 tk.Button(
     om_frame,
-    text='Import Template',
+    text='Upload OSIM OM',
     font=('Consolas', 12, 'bold'),
     padx=30,
     command=import_function,
     width=20
 ).pack(pady=10)
 
-# Export button (full)
-tk.Button(
-    om_frame,
-    text='Export Template',
-    font=('Consolas', 12, 'bold'),
-    padx=30,
-    command=export_schedule,
-    width=20
-).pack(pady=10)
-
 # Export button (OS)
 tk.Button(
     om_frame,
-    text='Export Operating Manual',
+    text='Download BAS OM',
     font=('Consolas', 12, 'bold'),
     padx=30,
     command=export_om,
+    width=20
+).pack(pady=10)
+
+# Export button (full)
+tk.Button(
+    om_frame,
+    text='Download OSIM OM',
+    font=('Consolas', 12, 'bold'),
+    padx=30,
+    command=export_schedule,
     width=20
 ).pack(pady=10)
 
@@ -596,7 +596,7 @@ timetable_frame.pack(padx=10, pady=10, side='left', fill='both', expand=True)
 # Import Public Holiday button
 tk.Button(
     timetable_frame,
-    text='Import Public Holiday',
+    text='Upload Public Holiday',
     font=('Consolas', 12, 'bold'),
     padx=30,
     command=import_public_holiday_function,

@@ -1,5 +1,16 @@
 Release Notes
 =============
+Date:   22/10/2025
+Name:   Kenneth
+Release:
+1. Made changes to UI for better clarity
+2. Added escape for backslashes in string
+
+Changes:
+bas_template_import.py
+main.py
+
+=============
 Date:   21/10/2025
 Name:   Kenneth
 Release:

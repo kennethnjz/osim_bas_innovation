@@ -94,7 +94,7 @@ if model_folder:
     print(f"Found model folder at: {model_folder}")
     nlp = spacy.load(model_folder)
 else:
-    model_folder = resource_path("en_core_web_sm\en_core_web_sm-3.8.0")
+    model_folder = resource_path("en_core_web_sm\\en_core_web_sm-3.8.0")
     nlp = spacy.load(model_folder)
 
 matcher = Matcher(nlp.vocab)
