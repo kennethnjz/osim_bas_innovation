@@ -181,7 +181,7 @@ def export_schedule():
         if export_file.endswith('.csv'):
             df.to_csv(export_file, index=False)
         else:
-            df.to_excel(export_file, index=False)
+            df.to_excel(export_file, sheet_name='Template', index=False)
         messagebox.showinfo('Export Successful', f'Data exported to {export_file}')
     except Exception as e:
         messagebox.showerror('Export Failed', f'An error occurred: {e}')
@@ -470,7 +470,7 @@ def export_om():
         if export_file.endswith('.csv'):
             df.to_csv(export_file, index=False, columns=export_cols)
         else:
-            df.to_excel(export_file, index=False, columns=export_cols)
+            df.to_excel(export_file, sheet_name='Template', index=False, columns=export_cols)
         messagebox.showinfo('Export Successful', f'Data exported to {export_file}')
     except Exception as e:
         messagebox.showerror('Export Failed', f'An error occurred: {e}')

@@ -1,5 +1,14 @@
 Release Notes
 =============
+Date:   21/10/2025
+Name:   Kenneth
+Release:
+1. Add sheet title to default to "Template" for export template features
+
+Changes:
+main.py
+
+=============
 Date:   20/10/2025
 Name:   Kenneth
 Release:
