@@ -149,16 +149,10 @@ def zoom_in(clickData):
 
     return fig
 
-# ---------------------------
-# Run Dash
-# ---------------------------
-if __name__ == "__main__":
-    def open_browser():
-        webbrowser.open_new("http://127.0.0.1:8050")
-    threading.Timer(1, open_browser).start()
-    app.run(debug=True, use_reloader=False)
 
-# Optional callable
 def show_gantt_chart():
-    threading.Timer(1, lambda: webbrowser.open_new("http://127.0.0.1:8050")).start()
-    app.run(debug=False, use_reloader=False)
+    # Run the web browser in a new thread to avoid blocking
+    threading.Thread(target=lambda: webbrowser.open_new("http://127.0.0.1:8050")).start()
+
+    # Run the Dash app in another thread
+    threading.Thread(target=lambda: app.run(debug=False, use_reloader=False, port=8050)).start()
